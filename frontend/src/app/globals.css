@@ -1,0 +1,87 @@
+@import "tailwindcss";
+@source "../pages";
+@source "../components";
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --color-muted: var(--muted);
+  --color-glass: var(--glass);
+  
+  --font-serif: var(--font-young-serif);
+  --font-sans: var(--font-inter);
+  --font-cursive: var(--font-marker);
+}
+
+:root {
+  --background: #000B1A; /* Deep Midnight Navy */
+  --foreground: #F8F9FA; /* Off-white */
+  
+  --primary: #FFB6C1; /* Soft Pink */
+  --secondary: #FF69B4; /* Hot Pink for accents */
+  --accent: #E0E0E0; /* Silver/Light Gray */
+  --muted: rgba(248, 249, 250, 0.6);
+  
+  --glass: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #000B1A;
+    --foreground: #F8F9FA;
+  }
+}
+
+
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif), serif;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.glass-morphism {
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.bg-premium-gradient {
+  background: radial-gradient(circle at top left, rgba(255, 182, 193, 0.15), transparent 40%),
+              radial-gradient(circle at bottom right, rgba(255, 105, 180, 0.1), transparent 40%),
+              var(--background);
+}
+
+/* Custom animations */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+::selection {
+  background: var(--primary);
+  color: var(--background);
+}
