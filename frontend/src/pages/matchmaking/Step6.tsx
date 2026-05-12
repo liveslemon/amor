@@ -109,7 +109,7 @@ export default function Step6() {
       upload_order: index + 1
     }));
 
-    setAnswer('uploaded_photos', mappedPhotos); // Store custom temp array
+    setAnswer('uploaded_photos', mappedPhotos as any); // Store custom temp array
     router.push('/matchmaking/Completion');
   };
 
