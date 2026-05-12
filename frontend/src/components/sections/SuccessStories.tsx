@@ -32,7 +32,7 @@ const TESTIMONIALS = [
   },
   {
     id: 4,
-    image: "/assets/WhatsApp Image 2026-05-02 at 12.15.20 (1).jpeg",
+    image: "/assets/pexels-royalrouge-26730480.jpg",
     name: "Amaka @Babcock",
     text: "I got matched a few weeks ago, and we've been outside since then!",
     icon: "heart",
@@ -40,7 +40,7 @@ const TESTIMONIALS = [
   },
   {
     id: 5,
-    image: "/assets/WhatsApp Image 2026-05-02 at 12.15.20.jpeg",
+    image: "/assets/pexels-enoch-wafula-2158508144-35495909.jpg",
     name: "David @UI",
     text: "Way more efficient than juggling 10 talking stages on other apps. No cap.",
     icon: "like",
@@ -48,7 +48,7 @@ const TESTIMONIALS = [
   },
   {
     id: 6,
-    image: "/assets/WhatsApp Image 2026-05-02 at 12.15.50.jpeg",
+    image: "/assets/pexels-kwakugriffn-14237285.jpg",
     name: "Ngozi @OAU",
     text: "Date was massive! The spot we went to was actually lit.",
     icon: "heart",

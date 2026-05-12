@@ -98,8 +98,8 @@ const RealDatesDelivered = () => {
         >
           <div className="w-full h-[180px] md:h-[240px] bg-[#222] flex items-center justify-center overflow-hidden border border-black/50 select-none">
             <img 
-              src="/assets/WhatsApp Image 2026-05-02 at 12.15.50.jpeg" 
-              alt="Couple Park Photo" 
+              src="/assets/pexels-sena-yildirim-85161789-9586608.jpg" 
+              alt="Date Vibe Record Player" 
               className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
             />
           </div>

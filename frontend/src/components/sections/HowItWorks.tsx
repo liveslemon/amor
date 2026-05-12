@@ -9,8 +9,8 @@ const steps = [
     title: `Tell ${APP_CONFIG.name} Your Type`,
     description: "Submit your preferences by Tuesday 11:59 PM.",
     imageAsset: (
-      <div className="w-20 h-20 md:w-24 md:h-24 bg-[#111827] rounded-xl flex items-center justify-center border border-white/10 shadow-xl">
-        <span className="text-[10px] text-white/40 uppercase tracking-widest font-medium">Profile</span>
+      <div className="w-20 h-20 md:w-24 md:h-24 bg-[#111827] rounded-xl flex items-center justify-center border border-white/10 shadow-xl overflow-hidden">
+        <img src="/assets/pexels-ketut-subiyanto-4350099.jpg" alt="Set preferences" className="w-full h-full object-cover" />
       </div>
     ),
   },
@@ -18,8 +18,8 @@ const steps = [
     title: "The Wednesday Drop",
     description: "Check your iMessage at 7pm. We will send you one\npersonalized match and curate your date for you!",
     imageAsset: (
-      <div className="w-36 h-24 md:w-48 md:h-28 bg-[#111827] rounded-lg flex items-center justify-center border border-white/10 shadow-xl">
-         <span className="text-[10px] md:text-xs text-white/50 uppercase tracking-widest font-medium">Match</span>
+      <div className="w-36 h-24 md:w-48 md:h-28 bg-[#111827] rounded-lg flex items-center justify-center border border-white/10 shadow-xl overflow-hidden">
+         <img src="/assets/Gemini_Generated_Image_nbyu5znbyu5znbyu.png" alt="The drop" className="w-full h-full object-cover" />
       </div>
     ),
   },
@@ -38,8 +38,8 @@ const steps = [
     description: "Enjoy a good time with your personalized date!",
     imageAsset: (
       <div className="w-24 h-28 md:w-28 md:h-32 bg-white p-2 pb-6 shadow-xl rotate-3 flex flex-col border border-white/20">
-         <div className="flex-1 bg-gray-800 flex items-center justify-center rounded-sm">
-            <span className="text-[9px] text-white/50 uppercase tracking-widest font-medium">Polaroid</span>
+         <div className="flex-1 bg-gray-800 flex items-center justify-center rounded-sm overflow-hidden">
+            <img src="/assets/pexels-polina-tankilevitch-6439148.jpg" alt="Polaroid memories" className="w-full h-full object-cover" />
          </div>
       </div>
     ),

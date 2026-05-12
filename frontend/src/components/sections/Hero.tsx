@@ -77,7 +77,7 @@ const Hero = () => {
           className="relative w-[280px] h-[360px] sm:w-[320px] sm:h-[420px] rounded-[32px] overflow-hidden border border-white/10 shadow-2xl my-4"
         >
           <img 
-            src="https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&q=80&w=600&h=800" 
+            src="/assets/pexels-gustavo-fring-5635513.jpg" 
             alt="Happy Couple" 
             className="w-full h-full object-cover scale-105 hover:scale-100 transition-transform duration-700"
           />

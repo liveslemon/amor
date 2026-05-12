@@ -1,4 +1,4 @@
 export const APP_CONFIG = {
-  name: "Mingle",
+  name: "Minglee",
   tagline: "Get a match every Wednesday",
 };
