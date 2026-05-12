@@ -56,15 +56,22 @@ const WaitlistModal = () => {
                 <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mb-6">
                   <CheckCircle2 className="w-8 h-8 text-primary" />
                 </div>
-                <h3 className="text-2xl font-serif mb-2">You're on the list!</h3>
-                <p className="text-muted">We'll text you when a match is ready.</p>
+                <h3 className="text-2xl font-serif mb-2">
+                  You're on the list!
+                </h3>
+                <p className="text-muted">
+                  We'll text you when a match is ready.
+                </p>
               </motion.div>
             ) : (
               <>
                 <div className="mb-8">
-                  <h3 className="text-3xl font-serif mb-3">Join {APP_CONFIG.name}</h3>
+                  <h3 className="text-3xl font-serif mb-3">
+                    Join {APP_CONFIG.name}
+                  </h3>
                   <p className="text-muted text-sm">
-                    Enter your phone number to join the waitlist for the next Wednesday Drop.
+                    Enter your phone number to join the waitlist for the next
+                    Friday Drop.
                   </p>
                 </div>
 

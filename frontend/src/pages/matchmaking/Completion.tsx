@@ -144,7 +144,7 @@ export default function Completion() {
             ) : (
               <p className="text-white/60 text-lg font-light leading-relaxed">
                 We're analyzing your profile now. Check your texts this 
-                <span className="text-white font-medium"> Wednesday at 7 PM </span> 
+                <span className="text-white font-medium"> Friday at 7 PM </span> 
                 for your first curated date plan.
               </p>
             )}

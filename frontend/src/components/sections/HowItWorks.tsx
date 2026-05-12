@@ -10,16 +10,25 @@ const steps = [
     description: "Submit your preferences by Tuesday 11:59 PM.",
     imageAsset: (
       <div className="w-20 h-20 md:w-24 md:h-24 bg-[#111827] rounded-xl flex items-center justify-center border border-white/10 shadow-xl overflow-hidden">
-        <img src="/assets/pexels-ketut-subiyanto-4350099.jpg" alt="Set preferences" className="w-full h-full object-cover" />
+        <img
+          src="/assets/pexels-ketut-subiyanto-4350099.jpg"
+          alt="Set preferences"
+          className="w-full h-full object-cover"
+        />
       </div>
     ),
   },
   {
-    title: "The Wednesday Drop",
-    description: "Check your iMessage at 7pm. We will send you one\npersonalized match and curate your date for you!",
+    title: "The Friday Drop",
+    description:
+      "Check your Whatsapp at 8am. We will send you one\npersonalized match",
     imageAsset: (
       <div className="w-36 h-24 md:w-48 md:h-28 bg-[#111827] rounded-lg flex items-center justify-center border border-white/10 shadow-xl overflow-hidden">
-         <img src="/assets/Gemini_Generated_Image_nbyu5znbyu5znbyu.png" alt="The drop" className="w-full h-full object-cover" />
+        <img
+          src="/assets/Gemini_Generated_Image_nbyu5znbyu5znbyu.png"
+          alt="The drop"
+          className="w-full h-full object-cover"
+        />
       </div>
     ),
   },
@@ -28,8 +37,8 @@ const steps = [
     description: "Find a time that works for both of you to meet up.",
     imageAsset: (
       <div className="w-20 h-20 md:w-24 md:h-24 bg-white rounded-xl flex flex-col items-center justify-center shadow-xl border border-white/20">
-         <div className="w-full h-1/4 bg-red-500 rounded-t-lg border-b border-red-600 mb-1" />
-         <span className="text-xl md:text-2xl font-bold text-gray-800">14</span>
+        <div className="w-full h-1/4 bg-red-500 rounded-t-lg border-b border-red-600 mb-1" />
+        <span className="text-xl md:text-2xl font-bold text-gray-800">14</span>
       </div>
     ),
   },
@@ -38,9 +47,13 @@ const steps = [
     description: "Enjoy a good time with your personalized date!",
     imageAsset: (
       <div className="w-24 h-28 md:w-28 md:h-32 bg-white p-2 pb-6 shadow-xl rotate-3 flex flex-col border border-white/20">
-         <div className="flex-1 bg-gray-800 flex items-center justify-center rounded-sm overflow-hidden">
-            <img src="/assets/pexels-polina-tankilevitch-6439148.jpg" alt="Polaroid memories" className="w-full h-full object-cover" />
-         </div>
+        <div className="flex-1 bg-gray-800 flex items-center justify-center rounded-sm overflow-hidden">
+          <img
+            src="/assets/pexels-polina-tankilevitch-6439148.jpg"
+            alt="Polaroid memories"
+            className="w-full h-full object-cover"
+          />
+        </div>
       </div>
     ),
   },
@@ -48,17 +61,19 @@ const steps = [
 
 const HowItWorks = () => {
   return (
-    <section 
-      id="how-it-works" 
+    <section
+      id="how-it-works"
       className="py-16 md:py-24 w-full flex flex-col items-center justify-center overflow-hidden bg-[#0c1220] text-white relative"
     >
       <div className="w-full max-w-5xl mx-auto px-4 md:px-6">
-        
         {/* Title */}
         <div className="text-center mb-8 md:mb-12 flex justify-center w-full">
           <div className="bg-black px-5 py-1.5 flex items-center gap-1 shadow-xl rounded-sm">
             <h2 className="text-3xl md:text-4xl font-serif tracking-tight">
-              How It <span className="text-[#ff1493] font-[family-name:var(--font-marker)] font-normal tracking-wide inline-block -rotate-2 ml-1">works</span>
+              How It{" "}
+              <span className="text-[#ff1493] font-[family-name:var(--font-marker)] font-normal tracking-wide inline-block -rotate-2 ml-1">
+                works
+              </span>
             </h2>
           </div>
         </div>
@@ -78,7 +93,6 @@ const HowItWorks = () => {
                 className={`flex w-full ${isLeft ? "justify-start md:pl-16" : "justify-end md:pr-16"}`}
               >
                 <div className="w-full md:w-[60%] flex flex-col items-center text-center">
-                  
                   {/* Step Title & Number */}
                   <div className="flex items-center gap-2 mb-2 md:mb-2.5">
                     <span className="flex items-center justify-center w-5 h-5 md:w-6 md:h-6 rounded-full border-[1.5px] border-orange-400 text-orange-400 text-xs md:text-sm font-bold shrink-0">
@@ -98,13 +112,11 @@ const HowItWorks = () => {
                   <div className="relative group transition-transform duration-300 hover:scale-105 cursor-default">
                     {step.imageAsset}
                   </div>
-
                 </div>
               </motion.div>
             );
           })}
         </div>
-
       </div>
     </section>
   );
