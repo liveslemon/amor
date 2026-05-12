@@ -1,7 +1,9 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 export async function fetchApi(endpoint: string, options: RequestInit = {}) {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('mingle_access_token') : null;
+  const token = typeof window !== 'undefined' 
+    ? (localStorage.getItem('mingle_token') || localStorage.getItem('mingle_access_token')) 
+    : null;
   
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
