@@ -87,22 +87,21 @@ export default function RegistrationComplete() {
             </div>
 
             <div className="flex flex-col gap-4 w-full max-w-sm">
-              <Link href="/" className="w-full">
-                <button className="w-full h-14 rounded-xl flex items-center justify-center gap-3 font-sans font-semibold transition-colors cursor-pointer border-none bg-white text-[#0a0f1a] hover:bg-white/90">
-                  <Home className="w-4 h-4" />
-                  <span>Back to Home</span>
-                </button>
+              <Link
+                href="/"
+                className="w-full h-14 rounded-xl flex items-center justify-center gap-3 font-sans font-semibold transition-colors cursor-pointer border-none bg-white text-[#0a0f1a] hover:bg-white/90"
+              >
+                <Home className="w-4 h-4" />
+                <span>Back to Home</span>
               </Link>
               <a
                 href={whatsappLink}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="w-full"
+                className="w-full h-14 rounded-xl flex items-center justify-center gap-3 font-sans font-semibold transition-colors cursor-pointer border-none bg-white text-[#0a0f1a] hover:bg-white/90"
               >
-                <button className="w-full h-14 rounded-xl flex items-center justify-center gap-3 font-sans font-semibold transition-colors cursor-pointer border-none bg-white text-[#0a0f1a] hover:bg-white/90">
-                  <MessageCircle className="w-5 h-5" />
-                  <span>Send message on WhatsApp</span>
-                </button>
+                <MessageCircle className="w-5 h-5" />
+                <span>Send message on WhatsApp</span>
               </a>
 
               <button

@@ -39,7 +39,7 @@ export default function Completion() {
           habits: answers.habits,
           conflict_style: answers.conflict_style,
           relationship_goal: answers.relationship_goal,
-          green_flag: answers.green_flag,
+          green_flag: Array.isArray(answers.green_flag) ? answers.green_flag.join(', ') : answers.green_flag,
           instagram: answers.instagram,
           tiktok: answers.tiktok
         });
