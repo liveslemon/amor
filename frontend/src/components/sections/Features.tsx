@@ -47,7 +47,7 @@ const RealDatesDelivered = () => {
           {/* Image Placeholder */}
           <div className="w-full h-[220px] md:h-[280px] bg-[#2a2a2c] flex items-center justify-center overflow-hidden border border-black/50 select-none">
             <img 
-              src="/assets/WhatsApp Image 2026-05-02 at 12.15.20 (1).jpeg" 
+              src="/assets/WhatsApp Image 2026-05-02 at 12.15.20 (1).webp" 
               alt="Eating Photo" 
               className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
             />
@@ -71,7 +71,7 @@ const RealDatesDelivered = () => {
           {/* Left Photo in Strip */}
           <div className="flex-1 h-[120px] md:h-[150px] bg-[#222] relative flex items-center justify-center overflow-hidden border border-black select-none">
             <img 
-              src="/assets/WhatsApp Image 2026-05-02 at 12.15.20.jpeg" 
+              src="/assets/WhatsApp Image 2026-05-02 at 12.15.20.webp" 
               alt="Park Pic 1" 
               className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
             />
@@ -79,7 +79,7 @@ const RealDatesDelivered = () => {
           {/* Right Photo in Strip */}
           <div className="flex-1 h-[120px] md:h-[150px] bg-[#2a2a2c] relative flex items-center justify-center overflow-hidden border border-black select-none">
             <img 
-              src="/assets/WhatsApp Image 2026-05-02 at 12.15.50.jpeg" 
+              src="/assets/WhatsApp Image 2026-05-02 at 12.15.50.webp" 
               alt="Park Pic 2" 
               className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
             />
@@ -98,7 +98,7 @@ const RealDatesDelivered = () => {
         >
           <div className="w-full h-[180px] md:h-[240px] bg-[#222] flex items-center justify-center overflow-hidden border border-black/50 select-none">
             <img 
-              src="/assets/pexels-sena-yildirim-85161789-9586608.jpg" 
+              src="/assets/pexels-sena-yildirim-85161789-9586608.webp" 
               alt="Date Vibe Record Player" 
               className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
             />

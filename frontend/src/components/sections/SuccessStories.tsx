@@ -8,7 +8,7 @@ import { APP_CONFIG } from "@/config/app";
 const TESTIMONIALS = [
   {
     id: 1,
-    image: "/assets/WhatsApp Image 2026-05-02 at 12.15.20 (1).jpeg",
+    image: "/assets/WhatsApp Image 2026-05-02 at 12.15.20 (1).webp",
     name: "Chinedu @PAU",
     text: `Omo, ${APP_CONFIG.name} makes it super easy to link up with people without stress.`,
     icon: "heart",
@@ -16,7 +16,7 @@ const TESTIMONIALS = [
   },
   {
     id: 2,
-    image: "/assets/WhatsApp Image 2026-05-02 at 12.15.20.jpeg",
+    image: "/assets/WhatsApp Image 2026-05-02 at 12.15.20.webp",
     name: "Aisha @Unilag",
     text: "I literally don't need to do anything and just wait for the match. Mad o!",
     icon: "like",
@@ -24,7 +24,7 @@ const TESTIMONIALS = [
   },
   {
     id: 3,
-    image: "/assets/WhatsApp Image 2026-05-02 at 12.15.50.jpeg",
+    image: "/assets/WhatsApp Image 2026-05-02 at 12.15.50.webp",
     name: "Tobi @Covenant",
     text: "Because it's tied to school, no casted peeps. The quality is top notch.",
     icon: "like",
@@ -32,7 +32,7 @@ const TESTIMONIALS = [
   },
   {
     id: 4,
-    image: "/assets/pexels-royalrouge-26730480.jpg",
+    image: "/assets/pexels-royalrouge-26730480.webp",
     name: "Amaka @Babcock",
     text: "I got matched a few weeks ago, and we've been outside since then!",
     icon: "heart",
@@ -40,7 +40,7 @@ const TESTIMONIALS = [
   },
   {
     id: 5,
-    image: "/assets/pexels-enoch-wafula-2158508144-35495909.jpg",
+    image: "/assets/pexels-enoch-wafula-2158508144-35495909.webp",
     name: "David @UI",
     text: "Way more efficient than juggling 10 talking stages on other apps. No cap.",
     icon: "like",
@@ -48,7 +48,7 @@ const TESTIMONIALS = [
   },
   {
     id: 6,
-    image: "/assets/pexels-kwakugriffn-14237285.jpg",
+    image: "/assets/pexels-kwakugriffn-14237285.webp",
     name: "Ngozi @OAU",
     text: "Date was massive! The spot we went to was actually lit.",
     icon: "heart",
