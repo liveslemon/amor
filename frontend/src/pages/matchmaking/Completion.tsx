@@ -15,7 +15,7 @@ import {
 
 export default function Completion() {
   const router = useRouter();
-  const { answers } = useMatchStore();
+  const { answers, isUpdating } = useMatchStore();
   const [mounted, setMounted] = useState(false);
   const [saving, setSaving] = useState(true);
   const [error, setError] = useState('');
@@ -121,7 +121,7 @@ export default function Completion() {
             transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
             className="text-4xl md:text-5xl font-serif tracking-tight mb-6"
           >
-            {saving ? "Saving Profile..." : error ? "Oops!" : "You're on the list."}
+            {saving ? "Saving Profile..." : error ? "Oops!" : isUpdating ? "Profile Updated!" : "You're on the list."}
           </motion.h1>
 
           <motion.div
@@ -140,6 +140,10 @@ export default function Completion() {
             ) : saving ? (
               <p className="text-white/60 text-lg font-light leading-relaxed">
                 Please wait while we secure your spot on the waitlist.
+              </p>
+            ) : isUpdating ? (
+              <p className="text-white/60 text-lg font-light leading-relaxed">
+                Your profile has been successfully updated. We'll use these new details for your next curated match.
               </p>
             ) : (
               <p className="text-white/60 text-lg font-light leading-relaxed">

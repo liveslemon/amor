@@ -1,7 +1,7 @@
 import React from "react";
 import Head from "next/head";
 import { motion } from "framer-motion";
-import { CheckCircle, Home, Share2 } from "lucide-react";
+import { CheckCircle, Home, Share2, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { APP_CONFIG } from "@/config/app";
 
@@ -100,8 +100,8 @@ export default function RegistrationComplete() {
                 className="w-full"
               >
                 <button className="w-full h-14 rounded-xl flex items-center justify-center gap-3 font-sans font-semibold transition-colors cursor-pointer border-none bg-white text-[#0a0f1a] hover:bg-white/90">
-                  <Home className="w-4 h-4" />
-                  <span>Send message on whatsapp</span>
+                  <MessageCircle className="w-5 h-5" />
+                  <span>Send message on WhatsApp</span>
                 </button>
               </a>
 

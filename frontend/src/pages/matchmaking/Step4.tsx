@@ -11,7 +11,7 @@ export default function Step4() {
   const { answers, setAnswer } = useMatchStore();
   
   const [focuses, setFocuses] = useState<string[]>((answers.focuses as string[]) || []);
-  const [green_flag, setGreenFlag] = useState((answers.green_flag as string) || '');
+  const [greenFlags, setGreenFlags] = useState<string[]>((answers.green_flag as string[]) || []);
   const [instagram, setInstagram] = useState((answers.instagram as string) || '');
 
   const focusOptions = [
@@ -19,6 +19,14 @@ export default function Step4() {
     "Building a business/project on the side",
     "Balancing school and enjoying life",
     "Still figuring things out"
+  ];
+
+  const greenFlagOptions = [
+    "Emotional intelligence",
+    "Clear communication",
+    "Kindness to others",
+    "Ambition and drive",
+    "Great sense of humor"
   ];
 
   const toggleFocus = (option: string) => {
@@ -31,14 +39,24 @@ export default function Step4() {
     }
   };
 
-  const isValid = focuses.length > 0 && green_flag !== '' && instagram !== '';
+  const toggleGreenFlag = (option: string) => {
+    if (greenFlags.includes(option)) {
+      setGreenFlags(greenFlags.filter(f => f !== option));
+    } else {
+      if (greenFlags.length < 2) {
+        setGreenFlags([...greenFlags, option]);
+      }
+    }
+  };
+
+  const isValid = focuses.length > 0 && greenFlags.length > 0 && instagram !== '';
 
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid) return;
     
     setAnswer('focuses', focuses);
-    setAnswer('green_flag', green_flag);
+    setAnswer('green_flag', greenFlags);
     setAnswer('instagram', instagram);
     setAnswer('tiktok', instagram); // Use as placeholder for now
     
@@ -114,15 +132,33 @@ export default function Step4() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2">
-                <label className="text-xs uppercase tracking-widest text-white/40 font-medium ml-1">Biggest Green Flag In Others</label>
-                <input 
-                  type="text"
-                  placeholder="e.g. Ambition, Kindness, Good listener"
-                  value={green_flag}
-                  onChange={(e) => setGreenFlag(e.target.value)}
-                  className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-5 py-4 text-white text-base outline-none focus:border-white/30 transition-colors"
-                />
+              <div className="flex flex-col gap-3">
+                <div className="flex justify-between items-end">
+                  <label className="text-xs uppercase tracking-widest text-white/40 font-medium ml-1">
+                    Biggest Green Flag In Others (Select up to 2)
+                  </label>
+                  <span className="text-[10px] text-white/30">{greenFlags.length}/2</span>
+                </div>
+                <div className="flex flex-col gap-3">
+                  {greenFlagOptions.map((opt) => {
+                    const isSelected = greenFlags.includes(opt);
+                    return (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => toggleGreenFlag(opt)}
+                        className={`w-full text-left px-5 py-4 rounded-xl text-sm font-sans transition-all duration-200 border flex items-center justify-between cursor-pointer outline-none ${
+                          isSelected 
+                            ? "bg-white/5 text-white border-white/40 shadow-[inset_0_0_10px_rgba(255,255,255,0.02)]" 
+                            : "bg-transparent text-white/60 border-white/10 hover:border-white/20"
+                        }`}
+                      >
+                        <span>{opt}</span>
+                        {isSelected && <Check className="w-4 h-4 text-emerald-500" />}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="flex flex-col gap-2">

@@ -10,6 +10,9 @@ interface MatchState {
   isWaitlistModalOpen: boolean;
   toggleWaitlistModal: () => void;
   setAnswer: (id: string, value: AnswerValue) => void;
+  isUpdating: boolean;
+  setIsUpdating: (val: boolean) => void;
+  hydrateProfile: (profile: any, preferences: any, focuses: string[], builds: string[], photos: any[]) => void;
   next: () => void;
   back: () => void;
   reset: () => void;
@@ -20,6 +23,7 @@ export const useMatchStore = create<MatchState>((set) => ({
   currentStep: 0,
   currentPage: 0,
   isWaitlistModalOpen: false,
+  isUpdating: false,
 
   toggleWaitlistModal: () =>
     set((state) => ({ isWaitlistModalOpen: !state.isWaitlistModalOpen })),
@@ -31,6 +35,19 @@ export const useMatchStore = create<MatchState>((set) => ({
         [id]: value,
       },
     })),
+
+  setIsUpdating: (val) => set({ isUpdating: val }),
+
+  hydrateProfile: (profile, preferences, focuses, builds, photos) =>
+    set({
+      answers: {
+        ...profile,
+        ...preferences,
+        focuses,
+        preferred_builds: builds,
+        uploaded_photos: photos,
+      },
+    }),
 
   next: () =>
     set((state) => ({
@@ -47,5 +64,6 @@ export const useMatchStore = create<MatchState>((set) => ({
       answers: {},
       currentStep: 0,
       currentPage: 0,
+      isUpdating: false,
     }),
 }));

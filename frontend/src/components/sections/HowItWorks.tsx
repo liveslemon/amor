@@ -25,7 +25,7 @@ const steps = [
     imageAsset: (
       <div className="w-36 h-24 md:w-48 md:h-28 bg-[#111827] rounded-lg flex items-center justify-center border border-white/10 shadow-xl overflow-hidden">
         <img
-          src="/assets/Gemini_Generated_Image_nbyu5znbyu5znbyu.png"
+          src="/assets/Gemini_Generated_Image_nbyu5znbyu5znbyu.webp"
           alt="The drop"
           className="w-full h-full object-cover"
         />
