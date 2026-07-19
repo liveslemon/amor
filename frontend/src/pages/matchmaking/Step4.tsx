@@ -1,24 +1,30 @@
-import React, { useState } from 'react';
-import { APP_CONFIG } from '@/config/app';
-import Head from 'next/head';
-import { useRouter } from 'next/router';
-import { motion } from 'framer-motion';
-import { ArrowRight, ChevronLeft, Check, Pencil } from 'lucide-react';
-import { useMatchStore } from '@/store/useMatchStore';
+import React, { useState } from "react";
+import { APP_CONFIG } from "@/config/app";
+import Head from "next/head";
+import { useRouter } from "next/router";
+import { motion } from "framer-motion";
+import { ArrowRight, ChevronLeft, Check, Pencil } from "lucide-react";
+import { useMatchStore } from "@/store/useMatchStore";
 
 export default function Step4() {
   const router = useRouter();
   const { answers, setAnswer, isUpdating } = useMatchStore();
-  
-  const [focuses, setFocuses] = useState<string[]>((answers.focuses as string[]) || []);
-  const [greenFlags, setGreenFlags] = useState<string[]>((answers.green_flag as string[]) || []);
-  const [instagram, setInstagram] = useState((answers.instagram as string) || '');
+
+  const [focuses, setFocuses] = useState<string[]>(
+    (answers.focuses as string[]) || [],
+  );
+  const [greenFlags, setGreenFlags] = useState<string[]>(
+    (answers.green_flag as string[]) || [],
+  );
+  const [instagram, setInstagram] = useState(
+    (answers.instagram as string) || "",
+  );
 
   const focusOptions = [
     "Getting my degree and doing well",
     "Building a business/project on the side",
     "Balancing school and enjoying life",
-    "Still figuring things out"
+    "Still figuring things out",
   ];
 
   const greenFlagOptions = [
@@ -26,12 +32,12 @@ export default function Step4() {
     "Clear communication",
     "Kindness to others",
     "Ambition and drive",
-    "Great sense of humor"
+    "Great sense of humor",
   ];
 
   const toggleFocus = (option: string) => {
     if (focuses.includes(option)) {
-      setFocuses(focuses.filter(f => f !== option));
+      setFocuses(focuses.filter((f) => f !== option));
     } else {
       if (focuses.length < 2) {
         setFocuses([...focuses, option]);
@@ -41,7 +47,7 @@ export default function Step4() {
 
   const toggleGreenFlag = (option: string) => {
     if (greenFlags.includes(option)) {
-      setGreenFlags(greenFlags.filter(f => f !== option));
+      setGreenFlags(greenFlags.filter((f) => f !== option));
     } else {
       if (greenFlags.length < 2) {
         setGreenFlags([...greenFlags, option]);
@@ -49,18 +55,19 @@ export default function Step4() {
     }
   };
 
-  const isValid = focuses.length > 0 && greenFlags.length > 0 && instagram !== '';
+  const isValid =
+    focuses.length > 0 && greenFlags.length > 0 && instagram !== "";
 
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid) return;
-    
-    setAnswer('focuses', focuses);
-    setAnswer('green_flag', greenFlags);
-    setAnswer('instagram', instagram);
-    setAnswer('tiktok', instagram); // Use as placeholder for now
-    
-    router.push('/matchmaking/Step5');
+
+    setAnswer("focuses", focuses);
+    setAnswer("green_flag", greenFlags);
+    setAnswer("instagram", instagram);
+    setAnswer("tiktok", instagram); // Use as placeholder for now
+
+    router.push("/matchmaking/Step5");
   };
 
   return (
@@ -72,8 +79,8 @@ export default function Step4() {
         <div className="fixed inset-0 bg-[url('https://images.unsplash.com/photo-1508849789987-4e5333c12b78?auto=format&fit=crop&q=80&w=1200')] bg-cover bg-center opacity-[0.03] pointer-events-none" />
 
         <header className="flex items-center justify-between p-6 z-10 w-full max-w-xl mx-auto">
-          <button 
-            onClick={() => router.push('/matchmaking/Step3')}
+          <button
+            onClick={() => router.push("/matchmaking/Step3")}
             className="w-10 h-10 rounded-xl bg-[#0c1220] hover:bg-[#111827] flex items-center justify-center transition-colors border border-white/10 outline-none"
           >
             <ChevronLeft className="w-5 h-5 text-white/70" />
@@ -86,7 +93,7 @@ export default function Step4() {
         </header>
 
         <main className="flex-1 flex flex-col items-center px-6 max-w-xl mx-auto w-full pb-20 z-10 mt-4">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
@@ -109,7 +116,9 @@ export default function Step4() {
                   <label className="text-xs uppercase tracking-widest text-white/40 font-medium ml-1">
                     My Focuses (Select up to 2)
                   </label>
-                  <span className="text-[10px] text-white/30">{focuses.length}/2</span>
+                  <span className="text-[10px] text-white/30">
+                    {focuses.length}/2
+                  </span>
                 </div>
                 <div className="flex flex-col gap-3">
                   {focusOptions.map((opt) => {
@@ -120,13 +129,15 @@ export default function Step4() {
                         type="button"
                         onClick={() => toggleFocus(opt)}
                         className={`w-full text-left px-5 py-4 rounded-xl text-sm font-sans transition-all duration-200 border flex items-center justify-between cursor-pointer outline-none ${
-                          isSelected 
-                            ? "bg-white/5 text-white border-white/40 shadow-[inset_0_0_10px_rgba(255,255,255,0.02)]" 
+                          isSelected
+                            ? "bg-white/5 text-white border-white/40 shadow-[inset_0_0_10px_rgba(255,255,255,0.02)]"
                             : "bg-transparent text-white/60 border-white/10 hover:border-white/20"
                         }`}
                       >
                         <span>{opt}</span>
-                        {isSelected && <Check className="w-4 h-4 text-emerald-500" />}
+                        {isSelected && (
+                          <Check className="w-4 h-4 text-emerald-500" />
+                        )}
                       </button>
                     );
                   })}
@@ -138,7 +149,9 @@ export default function Step4() {
                   <label className="text-xs uppercase tracking-widest text-white/40 font-medium ml-1">
                     Biggest Green Flag In Others (Select up to 2)
                   </label>
-                  <span className="text-[10px] text-white/30">{greenFlags.length}/2</span>
+                  <span className="text-[10px] text-white/30">
+                    {greenFlags.length}/2
+                  </span>
                 </div>
                 <div className="flex flex-col gap-3">
                   {greenFlagOptions.map((opt) => {
@@ -149,13 +162,15 @@ export default function Step4() {
                         type="button"
                         onClick={() => toggleGreenFlag(opt)}
                         className={`w-full text-left px-5 py-4 rounded-xl text-sm font-sans transition-all duration-200 border flex items-center justify-between cursor-pointer outline-none ${
-                          isSelected 
-                            ? "bg-white/5 text-white border-white/40 shadow-[inset_0_0_10px_rgba(255,255,255,0.02)]" 
+                          isSelected
+                            ? "bg-white/5 text-white border-white/40 shadow-[inset_0_0_10px_rgba(255,255,255,0.02)]"
                             : "bg-transparent text-white/60 border-white/10 hover:border-white/20"
                         }`}
                       >
                         <span>{opt}</span>
-                        {isSelected && <Check className="w-4 h-4 text-emerald-500" />}
+                        {isSelected && (
+                          <Check className="w-4 h-4 text-emerald-500" />
+                        )}
                       </button>
                     );
                   })}
@@ -163,10 +178,14 @@ export default function Step4() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-xs uppercase tracking-widest text-white/40 font-medium ml-1">Instagram Handle</label>
+                <label className="text-xs uppercase tracking-widest text-white/40 font-medium ml-1">
+                  Instagram Handle
+                </label>
                 <div className="relative">
-                  <span className="absolute left-5 top-1/2 -translate-y-1/2 text-white/30">@</span>
-                  <input 
+                  <span className="absolute left-5 top-1/2 -translate-y-1/2 text-white/30">
+                    @
+                  </span>
+                  <input
                     type="text"
                     placeholder="johndoe"
                     value={instagram}
@@ -180,13 +199,15 @@ export default function Step4() {
                 type="submit"
                 disabled={!isValid}
                 className={`mt-4 w-full h-14 rounded-xl flex items-center justify-center gap-3 font-sans font-semibold transition-colors outline-none border-none cursor-pointer ${
-                  isValid 
-                    ? "bg-white text-[#0a0f1a] hover:bg-white/90" 
+                  isValid
+                    ? "bg-white text-[#0a0f1a] hover:bg-white/90"
                     : "bg-white/5 text-white/30 cursor-not-allowed border border-white/10"
                 }`}
               >
                 <span>{isUpdating ? "Save & Continue" : "Continue"}</span>
-                <ArrowRight className={`w-4 h-4 ${isValid ? "opacity-100" : "opacity-30"}`} />
+                <ArrowRight
+                  className={`w-4 h-4 ${isValid ? "opacity-100" : "opacity-30"}`}
+                />
               </button>
             </form>
           </motion.div>

@@ -1,36 +1,39 @@
-import React, { useState } from 'react';
-import Head from 'next/head';
-import { useRouter } from 'next/router';
-import { motion } from 'framer-motion';
-import { ArrowRight, Loader2 } from 'lucide-react';
-import Link from 'next/link';
-import { login } from '@/api/auth';
-import { getMe } from '@/api/profile';
-import { useAuthStore } from '@/store/useAuthStore';
-import { useMatchStore } from '@/store/useMatchStore';
-import { APP_CONFIG } from '@/config/app';
+import React, { useState } from "react";
+import Head from "next/head";
+import { useRouter } from "next/router";
+import { motion } from "framer-motion";
+import { ArrowRight, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { login } from "@/api/auth";
+import { getMe } from "@/api/profile";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useMatchStore } from "@/store/useMatchStore";
+import { APP_CONFIG } from "@/config/app";
 
 export default function Login() {
   const router = useRouter();
-  const setAuth = useAuthStore(state => state.setAuth);
-  const [formData, setFormData] = useState({ whatsapp_number: '', password: '' });
+  const setAuth = useAuthStore((state) => state.setAuth);
+  const [formData, setFormData] = useState({
+    whatsapp_number: "",
+    password: "",
+  });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-    
+    setError("");
+
     try {
       const res = await login({
         ...formData,
         whatsapp_number: `+${formData.whatsapp_number}`,
       });
-      
+
       if (res.access_token && res.user) {
         setAuth(res.access_token, res.user);
-        
+
         // Check if user already finished onboarding
         if (res.user.onboarding_completed) {
           try {
@@ -38,24 +41,29 @@ export default function Login() {
             // Hydrate match store with existing profile
             const { hydrateProfile, setIsUpdating } = useMatchStore.getState();
             hydrateProfile(
-              data.profile || {}, 
-              data.preferences || {}, 
-              data.focuses || [], 
-              data.preferred_builds || [], 
-              data.photos || []
+              data.profile || {},
+              data.preferences || {},
+              data.focuses || [],
+              data.preferred_builds || [],
+              data.photos || [],
             );
             setIsUpdating(true);
-            router.push('/matchmaking/Step1');
+            router.push("/matchmaking/Step1");
           } catch (err) {
             console.error("Failed to fetch profile for update", err);
-            router.push('/matchmaking/Step1'); // Fallback
+            router.push("/matchmaking/Step1"); // Fallback
           }
         } else {
-          router.push('/matchmaking/Step1');
+          router.push("/matchmaking/Step1");
         }
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || err.response?.data?.error || err.message || 'Login failed');
+      setError(
+        err.response?.data?.message ||
+          err.response?.data?.error ||
+          err.message ||
+          "Login failed",
+      );
     } finally {
       setLoading(false);
     }
@@ -72,7 +80,10 @@ export default function Login() {
 
         {/* Logo / Home Link */}
         <div className="absolute top-8 left-8 z-20">
-          <Link href="/" className="font-serif text-2xl tracking-[0.15em] font-medium text-white hover:opacity-80 transition-opacity">
+          <Link
+            href="/"
+            className="font-serif text-2xl tracking-[0.15em] font-medium text-white hover:opacity-80 transition-opacity"
+          >
             {APP_CONFIG.name.toUpperCase()}
           </Link>
         </div>
@@ -95,35 +106,45 @@ export default function Login() {
             <p className="text-base md:text-lg text-white/50 mb-8 font-sans font-light max-w-sm mx-auto leading-relaxed">
               Log in to manage your profile or check your upcoming dates.
             </p>
-            
-            <form onSubmit={handleSubmit} className="w-full flex flex-col gap-4">
+
+            <form
+              onSubmit={handleSubmit}
+              className="w-full flex flex-col gap-4"
+            >
               {error && (
                 <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-xl text-sm mb-2">
                   {error}
                 </div>
               )}
-              
+
               <div className="flex w-full">
                 <div className="flex items-center justify-center bg-[#0a0f1a]/50 border border-white/10 border-r-0 rounded-l-xl px-4 text-white/50 text-lg select-none">
                   +
                 </div>
-                <input 
+                <input
                   type="tel"
                   inputMode="numeric"
                   placeholder="234XXXXXXXXXX"
                   required
                   value={formData.whatsapp_number}
-                  onChange={(e) => setFormData({...formData, whatsapp_number: e.target.value.replace(/[^0-9]/g, '')})}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      whatsapp_number: e.target.value.replace(/[^0-9]/g, ""),
+                    })
+                  }
                   className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-r-xl px-6 py-4 text-white text-lg outline-none focus:border-white/30 transition-colors placeholder:text-white/20"
                 />
               </div>
-              
-              <input 
+
+              <input
                 type="password"
                 placeholder="Password"
                 required
                 value={formData.password}
-                onChange={(e) => setFormData({...formData, password: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
                 className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-6 py-4 text-white text-lg outline-none focus:border-white/30 transition-colors placeholder:text-white/20"
               />
 
@@ -132,7 +153,9 @@ export default function Login() {
                 disabled={loading}
                 className="group relative w-full flex items-center justify-center gap-3 bg-white text-[#0a0f1a] px-8 py-4 rounded-xl font-sans font-semibold text-lg hover:bg-white/90 transition-colors cursor-pointer border-none outline-none disabled:opacity-50 disabled:cursor-not-allowed mt-4"
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
                   <>
                     <span>Log In</span>
                     <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -142,8 +165,11 @@ export default function Login() {
             </form>
 
             <div className="mt-8 text-sm text-white/40">
-              Don't have an account?{' '}
-              <Link href="/signup" className="text-white hover:underline underline-offset-4 transition-all">
+              Don't have an account?{" "}
+              <Link
+                href="/signup"
+                className="text-white hover:underline underline-offset-4 transition-all"
+              >
                 Sign Up
               </Link>
             </div>

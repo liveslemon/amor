@@ -159,7 +159,7 @@ export default function SignUp() {
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        whatsapp_number: e.target.value.replace(/[^0-9]/g, ''),
+                        whatsapp_number: e.target.value.replace(/[^0-9]/g, ""),
                       })
                     }
                     className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-r-xl px-6 py-4 text-white text-lg outline-none focus:border-white/30 transition-colors placeholder:text-white/20"

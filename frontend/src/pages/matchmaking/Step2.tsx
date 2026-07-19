@@ -1,44 +1,56 @@
-import React, { useState } from 'react';
-import { APP_CONFIG } from '@/config/app';
-import Head from 'next/head';
-import { useRouter } from 'next/router';
-import { motion } from 'framer-motion';
-import { ArrowRight, ChevronLeft, Pencil } from 'lucide-react';
-import { useMatchStore } from '@/store/useMatchStore';
+import React, { useState } from "react";
+import { APP_CONFIG } from "@/config/app";
+import Head from "next/head";
+import { useRouter } from "next/router";
+import { motion } from "framer-motion";
+import { ArrowRight, ChevronLeft, Pencil } from "lucide-react";
+import { useMatchStore } from "@/store/useMatchStore";
 
 export default function Step2() {
   const router = useRouter();
   const { answers, setAnswer, isUpdating } = useMatchStore();
-  
-  const [skin_tone, setSkinTone] = useState((answers.skin_tone as string) || '');
-  const [personal_style, setPersonalStyle] = useState((answers.personal_style as string) || '');
-  const [social_persona, setSocialPersona] = useState((answers.social_persona as string) || '');
-  const [weekend_type, setWeekendType] = useState((answers.weekend_type as string) || '');
 
-  const isValid = skin_tone !== '' && personal_style !== '' && social_persona !== '' && weekend_type !== '';
+  const [skin_tone, setSkinTone] = useState(
+    (answers.skin_tone as string) || "",
+  );
+  const [personal_style, setPersonalStyle] = useState(
+    (answers.personal_style as string) || "",
+  );
+  const [social_persona, setSocialPersona] = useState(
+    (answers.social_persona as string) || "",
+  );
+  const [weekend_type, setWeekendType] = useState(
+    (answers.weekend_type as string) || "",
+  );
+
+  const isValid =
+    skin_tone !== "" &&
+    personal_style !== "" &&
+    social_persona !== "" &&
+    weekend_type !== "";
 
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid) return;
-    
-    setAnswer('skin_tone', skin_tone);
-    setAnswer('personal_style', personal_style);
-    setAnswer('social_persona', social_persona);
-    setAnswer('weekend_type', weekend_type);
-    
-    router.push('/matchmaking/Step3');
+
+    setAnswer("skin_tone", skin_tone);
+    setAnswer("personal_style", personal_style);
+    setAnswer("social_persona", social_persona);
+    setAnswer("weekend_type", weekend_type);
+
+    router.push("/matchmaking/Step3");
   };
 
-  const SelectionGroup = ({ 
-    label, 
-    options, 
-    selected, 
-    onSelect 
-  }: { 
-    label: string, 
-    options: string[], 
-    selected: string, 
-    onSelect: (val: string) => void 
+  const SelectionGroup = ({
+    label,
+    options,
+    selected,
+    onSelect,
+  }: {
+    label: string;
+    options: string[];
+    selected: string;
+    onSelect: (val: string) => void;
   }) => (
     <div className="flex flex-col gap-3">
       <label className="text-xs uppercase tracking-widest text-white/40 font-medium ml-1">
@@ -51,8 +63,8 @@ export default function Step2() {
             type="button"
             onClick={() => onSelect(opt)}
             className={`px-4 py-2.5 rounded-full text-sm font-sans transition-all duration-200 border cursor-pointer outline-none ${
-              selected === opt 
-                ? "bg-white text-black border-white" 
+              selected === opt
+                ? "bg-white text-black border-white"
                 : "bg-transparent text-white/60 border-white/10 hover:border-white/30 hover:bg-white/[0.02]"
             }`}
           >
@@ -72,8 +84,8 @@ export default function Step2() {
         <div className="fixed inset-0 bg-[url('https://images.unsplash.com/photo-1508849789987-4e5333c12b78?auto=format&fit=crop&q=80&w=1200')] bg-cover bg-center opacity-[0.03] pointer-events-none" />
 
         <header className="flex items-center justify-between p-6 z-10 w-full max-w-xl mx-auto">
-          <button 
-            onClick={() => router.push('/matchmaking/Step1')}
+          <button
+            onClick={() => router.push("/matchmaking/Step1")}
             className="w-10 h-10 rounded-xl bg-[#0c1220] hover:bg-[#111827] flex items-center justify-center transition-colors border border-white/10 outline-none"
           >
             <ChevronLeft className="w-5 h-5 text-white/70" />
@@ -86,7 +98,7 @@ export default function Step2() {
         </header>
 
         <main className="flex-1 flex flex-col items-center px-6 max-w-xl mx-auto w-full pb-20 z-10 mt-4">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
@@ -104,45 +116,47 @@ export default function Step2() {
             </div>
 
             <div className="flex flex-col gap-8">
-              <SelectionGroup 
-                label="Skin Tone" 
-                options={["Fair", "Tan", "Brown", "Dark"]} 
-                selected={skin_tone} 
-                onSelect={setSkinTone} 
+              <SelectionGroup
+                label="Skin Tone"
+                options={["Fair", "Tan", "Brown", "Dark"]}
+                selected={skin_tone}
+                onSelect={setSkinTone}
               />
 
-              <SelectionGroup 
-                label="Personal Style" 
-                options={["Streetwear", "Minimalist", "Casual", "Dressed Up"]} 
-                selected={personal_style} 
-                onSelect={setPersonalStyle} 
+              <SelectionGroup
+                label="Personal Style"
+                options={["Streetwear", "Minimalist", "Casual", "Dressed Up"]}
+                selected={personal_style}
+                onSelect={setPersonalStyle}
               />
 
-              <SelectionGroup 
-                label="Social Persona" 
-                options={["Introverted", "Ambiverted", "Extroverted"]} 
-                selected={social_persona} 
-                onSelect={setSocialPersona} 
+              <SelectionGroup
+                label="Social Persona"
+                options={["Introverted", "Ambiverted", "Extroverted"]}
+                selected={social_persona}
+                onSelect={setSocialPersona}
               />
 
-              <SelectionGroup 
-                label="Ideal Weekend" 
-                options={["Chill in", "Out at the Bar", "Exploring new spots"]} 
-                selected={weekend_type} 
-                onSelect={setWeekendType} 
+              <SelectionGroup
+                label="Ideal Weekend"
+                options={["Chill in", "Out at the Bar", "Exploring new spots"]}
+                selected={weekend_type}
+                onSelect={setWeekendType}
               />
 
               <button
                 onClick={handleNext}
                 disabled={!isValid}
                 className={`mt-4 w-full h-14 rounded-xl flex items-center justify-center gap-3 font-sans font-semibold transition-colors outline-none border-none cursor-pointer ${
-                  isValid 
-                    ? "bg-white text-[#0a0f1a] hover:bg-white/90" 
+                  isValid
+                    ? "bg-white text-[#0a0f1a] hover:bg-white/90"
                     : "bg-white/5 text-white/30 cursor-not-allowed border border-white/10"
                 }`}
               >
                 <span>{isUpdating ? "Save & Continue" : "Continue"}</span>
-                <ArrowRight className={`w-4 h-4 ${isValid ? "opacity-100" : "opacity-30"}`} />
+                <ArrowRight
+                  className={`w-4 h-4 ${isValid ? "opacity-100" : "opacity-30"}`}
+                />
               </button>
             </div>
           </motion.div>

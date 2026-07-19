@@ -1,13 +1,21 @@
-import React, { useState, useRef } from 'react';
-import { APP_CONFIG } from '@/config/app';
-import Head from 'next/head';
-import { useRouter } from 'next/router';
-import { motion } from 'framer-motion';
-import { ArrowRight, ChevronLeft, Plus, X, Loader2, Camera, Pencil } from 'lucide-react';
-import { useMatchStore } from '@/store/useMatchStore';
-import { useAuthStore } from '@/store/useAuthStore';
-import { supabase } from '@/lib/supabase';
-import { uploadPhotoBinary } from '@/api/profile';
+import React, { useState, useRef } from "react";
+import { APP_CONFIG } from "@/config/app";
+import Head from "next/head";
+import { useRouter } from "next/router";
+import { motion } from "framer-motion";
+import {
+  ArrowRight,
+  ChevronLeft,
+  Plus,
+  X,
+  Loader2,
+  Camera,
+  Pencil,
+} from "lucide-react";
+import { useMatchStore } from "@/store/useMatchStore";
+import { useAuthStore } from "@/store/useAuthStore";
+import { supabase } from "@/lib/supabase";
+import { uploadPhotoBinary } from "@/api/profile";
 
 interface PhotoSlot {
   id: number;
@@ -23,16 +31,16 @@ export default function Step6() {
   const router = useRouter();
   const { answers, setAnswer, isUpdating } = useMatchStore();
   const { user } = useAuthStore();
-  
+
   const [photos, setPhotos] = useState<PhotoSlot[]>([
     { id: 1, file: null, preview: null, uploadedUrl: null, isUploading: false },
     { id: 2, file: null, preview: null, uploadedUrl: null, isUploading: false },
-    { id: 3, file: null, preview: null, uploadedUrl: null, isUploading: false }
+    { id: 3, file: null, preview: null, uploadedUrl: null, isUploading: false },
   ]);
-  
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const handleSlotClick = (slotId: number) => {
     setActiveSlot(slotId);
@@ -44,9 +52,9 @@ export default function Step6() {
     if (!file || activeSlot === null) return;
 
     // Clear input
-    e.target.value = '';
+    e.target.value = "";
 
-    const slotIndex = photos.findIndex(p => p.id === activeSlot);
+    const slotIndex = photos.findIndex((p) => p.id === activeSlot);
     const previewUrl = URL.createObjectURL(file);
 
     // 1. Optimistic UI state
@@ -56,61 +64,84 @@ export default function Step6() {
       file,
       preview: previewUrl,
       isUploading: true,
-      uploadedUrl: null
+      uploadedUrl: null,
     };
     setPhotos(newPhotos);
-    setError('');
+    setError("");
 
     try {
       // 2. UPLOAD VIA OUR BACKEND PROXY (Secure, bypasses direct RLS)
       const { image_url } = await uploadPhotoBinary(file);
 
       // 3. Record success state
-      setPhotos(prev => prev.map(p => p.id === activeSlot ? {
-        ...p,
-        uploadedUrl: image_url,
-        isUploading: false
-      } : p));
-      
+      setPhotos((prev) =>
+        prev.map((p) =>
+          p.id === activeSlot
+            ? {
+                ...p,
+                uploadedUrl: image_url,
+                isUploading: false,
+              }
+            : p,
+        ),
+      );
     } catch (err: any) {
-      console.error('Direct Supabase Upload Error:', err);
-      setError(err.message || 'Upload failed. Please check your internet connection.');
+      console.error("Direct Supabase Upload Error:", err);
+      setError(
+        err.message || "Upload failed. Please check your internet connection.",
+      );
       // Rollback UI slot
-      setPhotos(prev => prev.map(p => p.id === activeSlot ? {
-        id: activeSlot,
-        preview: null,
-        file: null,
-        uploadedUrl: null,
-        isUploading: false
-      } : p));
+      setPhotos((prev) =>
+        prev.map((p) =>
+          p.id === activeSlot
+            ? {
+                id: activeSlot,
+                preview: null,
+                file: null,
+                uploadedUrl: null,
+                isUploading: false,
+              }
+            : p,
+        ),
+      );
     }
   };
 
   const removePhoto = (slotId: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    setPhotos(prev => prev.map(p => p.id === slotId ? {
-      id: slotId, file: null, preview: null, uploadedUrl: null, isUploading: false
-    } : p));
+    setPhotos((prev) =>
+      prev.map((p) =>
+        p.id === slotId
+          ? {
+              id: slotId,
+              file: null,
+              preview: null,
+              uploadedUrl: null,
+              isUploading: false,
+            }
+          : p,
+      ),
+    );
   };
 
   // Logic Check: User needs AT LEAST 2 photos successfully uploaded
-  const validUploads = photos.filter(p => p.uploadedUrl !== null);
+  const validUploads = photos.filter((p) => p.uploadedUrl !== null);
   const isValid = validUploads.length >= 2;
-  const isCurrentlyUploading = photos.some(p => p.isUploading);
+  const isCurrentlyUploading = photos.some((p) => p.isUploading);
 
   const handleComplete = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid) return;
-    
+
     // Map to the photo payload required by backend schema
     const mappedPhotos = validUploads.map((p, index) => ({
       image_url: p.uploadedUrl,
       photo_type: index === 0 ? "Profile" : "Gallery",
-      upload_order: index + 1
+      upload_order: index + 1,
     }));
 
-    setAnswer('uploaded_photos', mappedPhotos as any); // Store custom temp array
-    router.push('/matchmaking/Completion');
+    setAnswer("uploaded_photos", mappedPhotos as any); // Store custom temp array
+    router.push("/matchmaking/Completion");
   };
 
   return (
@@ -122,8 +153,8 @@ export default function Step6() {
         <div className="fixed inset-0 bg-[url('https://images.unsplash.com/photo-1508849789987-4e5333c12b78?auto=format&fit=crop&q=80&w=1200')] bg-cover bg-center opacity-[0.03] pointer-events-none" />
 
         <header className="flex items-center justify-between p-6 z-10 w-full max-w-xl mx-auto">
-          <button 
-            onClick={() => router.push('/matchmaking/Step5')}
+          <button
+            onClick={() => router.push("/matchmaking/Step5")}
             className="w-10 h-10 rounded-xl bg-[#0c1220] hover:bg-[#111827] flex items-center justify-center transition-colors border border-white/10 outline-none"
           >
             <ChevronLeft className="w-5 h-5 text-white/70" />
@@ -136,7 +167,7 @@ export default function Step6() {
         </header>
 
         <main className="flex-1 flex flex-col items-center px-6 max-w-xl mx-auto w-full pb-20 z-10 mt-4">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
@@ -153,36 +184,46 @@ export default function Step6() {
               </p>
             </div>
 
-            <input 
-              type="file" 
-              accept="image/*" 
-              className="hidden" 
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
               ref={fileInputRef}
               onChange={handleFileChange}
             />
 
             <div className="grid grid-cols-2 gap-4 mb-6">
               {photos.map((slot, index) => (
-                <div 
+                <div
                   key={slot.id}
-                  onClick={() => !slot.isUploading && !slot.preview && handleSlotClick(slot.id)}
+                  onClick={() =>
+                    !slot.isUploading &&
+                    !slot.preview &&
+                    handleSlotClick(slot.id)
+                  }
                   className={`relative aspect-[3/4] rounded-xl border-2 border-dashed transition-all flex flex-col items-center justify-center overflow-hidden cursor-pointer group ${
-                    index === 0 ? "col-span-2 aspect-[4/3] md:aspect-[16/9]" : ""
+                    index === 0
+                      ? "col-span-2 aspect-[4/3] md:aspect-[16/9]"
+                      : ""
                   } ${
-                    slot.preview 
-                      ? "border-solid border-white/20" 
+                    slot.preview
+                      ? "border-solid border-white/20"
                       : "border-white/10 hover:border-white/30 hover:bg-white/[0.02]"
                   }`}
                 >
                   {slot.preview ? (
                     <>
-                      <img src={slot.preview} className="w-full h-full object-cover" alt="Preview" />
+                      <img
+                        src={slot.preview}
+                        className="w-full h-full object-cover"
+                        alt="Preview"
+                      />
                       {slot.isUploading ? (
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                           <Loader2 className="w-6 h-6 text-white animate-spin" />
                         </div>
                       ) : (
-                        <button 
+                        <button
                           onClick={(e) => removePhoto(slot.id, e)}
                           className="absolute top-3 right-3 w-8 h-8 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 text-white hover:bg-red-500/80 transition-colors"
                         >
@@ -193,10 +234,16 @@ export default function Step6() {
                   ) : (
                     <div className="flex flex-col items-center gap-2 text-white/40 group-hover:text-white/70 transition-colors">
                       <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-1">
-                        {index === 0 ? <Camera className="w-6 h-6" /> : <Plus className="w-6 h-6" />}
+                        {index === 0 ? (
+                          <Camera className="w-6 h-6" />
+                        ) : (
+                          <Plus className="w-6 h-6" />
+                        )}
                       </div>
                       <span className="text-xs font-medium font-sans tracking-wide">
-                        {index === 0 ? "Main Profile Photo" : `Photo #${index + 1}`}
+                        {index === 0
+                          ? "Main Profile Photo"
+                          : `Photo #${index + 1}`}
                       </span>
                     </div>
                   )}
@@ -216,12 +263,22 @@ export default function Step6() {
                 disabled={!isValid || isCurrentlyUploading}
                 className={`w-full h-14 rounded-xl flex items-center justify-center gap-3 font-sans font-semibold transition-colors outline-none border-none cursor-pointer ${
                   isValid && !isCurrentlyUploading
-                    ? "bg-white text-[#0a0f1a] hover:bg-white/90 shadow-[0_0_20px_rgba(255,255,255,0.1)]" 
+                    ? "bg-white text-[#0a0f1a] hover:bg-white/90 shadow-[0_0_20px_rgba(255,255,255,0.1)]"
                     : "bg-white/5 text-white/30 cursor-not-allowed border border-white/10"
                 }`}
               >
-                <span>{isCurrentlyUploading ? 'Uploading Assets...' : isUpdating ? 'Update Profile' : 'Finalize Profile'}</span>
-                {!isCurrentlyUploading && <ArrowRight className={`w-4 h-4 ${isValid ? "opacity-100" : "opacity-30"}`} />}
+                <span>
+                  {isCurrentlyUploading
+                    ? "Uploading Assets..."
+                    : isUpdating
+                      ? "Update Profile"
+                      : "Finalize Profile"}
+                </span>
+                {!isCurrentlyUploading && (
+                  <ArrowRight
+                    className={`w-4 h-4 ${isValid ? "opacity-100" : "opacity-30"}`}
+                  />
+                )}
               </button>
             </form>
 
