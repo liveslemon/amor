@@ -23,7 +23,10 @@ export default function Login() {
     setError('');
     
     try {
-      const res = await login(formData);
+      const res = await login({
+        ...formData,
+        whatsapp_number: `+${formData.whatsapp_number}`,
+      });
       
       if (res.access_token && res.user) {
         setAuth(res.access_token, res.user);
@@ -61,7 +64,7 @@ export default function Login() {
   return (
     <>
       <Head>
-        <title>Log In | {APP_CONFIG.name}</title>
+        <title>{`Log In | ${APP_CONFIG.name}`}</title>
       </Head>
       <div className="min-h-[100dvh] bg-[#0a0f1a] flex flex-col items-center justify-center p-6 text-white relative overflow-hidden">
         {/* Deep Background Elements */}
@@ -100,14 +103,20 @@ export default function Login() {
                 </div>
               )}
               
-              <input 
-                type="tel"
-                placeholder="WhatsApp Number (e.g. +234...)"
-                required
-                value={formData.whatsapp_number}
-                onChange={(e) => setFormData({...formData, whatsapp_number: e.target.value})}
-                className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-6 py-4 text-white text-lg outline-none focus:border-white/30 transition-colors placeholder:text-white/20"
-              />
+              <div className="flex w-full">
+                <div className="flex items-center justify-center bg-[#0a0f1a]/50 border border-white/10 border-r-0 rounded-l-xl px-4 text-white/50 text-lg select-none">
+                  +
+                </div>
+                <input 
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="234XXXXXXXXXX"
+                  required
+                  value={formData.whatsapp_number}
+                  onChange={(e) => setFormData({...formData, whatsapp_number: e.target.value.replace(/[^0-9]/g, '')})}
+                  className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-r-xl px-6 py-4 text-white text-lg outline-none focus:border-white/30 transition-colors placeholder:text-white/20"
+                />
+              </div>
               
               <input 
                 type="password"

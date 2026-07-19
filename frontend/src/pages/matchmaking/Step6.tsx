@@ -3,7 +3,7 @@ import { APP_CONFIG } from '@/config/app';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
-import { ArrowRight, ChevronLeft, Plus, X, Loader2, Camera } from 'lucide-react';
+import { ArrowRight, ChevronLeft, Plus, X, Loader2, Camera, Pencil } from 'lucide-react';
 import { useMatchStore } from '@/store/useMatchStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { supabase } from '@/lib/supabase';
@@ -21,7 +21,7 @@ const BUCKET_NAME = process.env.NEXT_PUBLIC_SUPABASE_BUCKET || "user-photos";
 
 export default function Step6() {
   const router = useRouter();
-  const { answers, setAnswer } = useMatchStore();
+  const { answers, setAnswer, isUpdating } = useMatchStore();
   const { user } = useAuthStore();
   
   const [photos, setPhotos] = useState<PhotoSlot[]>([
@@ -116,7 +116,7 @@ export default function Step6() {
   return (
     <>
       <Head>
-        <title>Photo Showcase | {APP_CONFIG.name}</title>
+        <title>{`Photo Showcase | ${APP_CONFIG.name}`}</title>
       </Head>
       <div className="min-h-[100dvh] bg-[#0a0f1a] text-white flex flex-col relative overflow-x-hidden">
         <div className="fixed inset-0 bg-[url('https://images.unsplash.com/photo-1508849789987-4e5333c12b78?auto=format&fit=crop&q=80&w=1200')] bg-cover bg-center opacity-[0.03] pointer-events-none" />
@@ -128,8 +128,9 @@ export default function Step6() {
           >
             <ChevronLeft className="w-5 h-5 text-white/70" />
           </button>
-          <div className="text-xs font-sans font-semibold text-white/50 tracking-[0.2em] uppercase bg-[#0c1220] px-4 py-1.5 rounded-full border border-white/10">
-            Step 6 of 6
+          <div className="text-xs font-sans font-semibold text-white/50 tracking-[0.2em] uppercase bg-[#0c1220] px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
+            {isUpdating && <Pencil className="w-3 h-3" />}
+            {isUpdating ? "Editing Profile" : "Step 6 of 6"}
           </div>
           <div className="w-10 h-10" />
         </header>
@@ -219,7 +220,7 @@ export default function Step6() {
                     : "bg-white/5 text-white/30 cursor-not-allowed border border-white/10"
                 }`}
               >
-                <span>{isCurrentlyUploading ? 'Uploading Assets...' : 'Finalize Profile'}</span>
+                <span>{isCurrentlyUploading ? 'Uploading Assets...' : isUpdating ? 'Update Profile' : 'Finalize Profile'}</span>
                 {!isCurrentlyUploading && <ArrowRight className={`w-4 h-4 ${isValid ? "opacity-100" : "opacity-30"}`} />}
               </button>
             </form>

@@ -3,12 +3,12 @@ import { APP_CONFIG } from '@/config/app';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
-import { ArrowRight, ChevronLeft, Check } from 'lucide-react';
+import { ArrowRight, ChevronLeft, Check, Pencil } from 'lucide-react';
 import { useMatchStore } from '@/store/useMatchStore';
 
 export default function Step4() {
   const router = useRouter();
-  const { answers, setAnswer } = useMatchStore();
+  const { answers, setAnswer, isUpdating } = useMatchStore();
   
   const [focuses, setFocuses] = useState<string[]>((answers.focuses as string[]) || []);
   const [greenFlags, setGreenFlags] = useState<string[]>((answers.green_flag as string[]) || []);
@@ -66,7 +66,7 @@ export default function Step4() {
   return (
     <>
       <Head>
-        <title>Focus & Socials | {APP_CONFIG.name}</title>
+        <title>{`Focus & Socials | ${APP_CONFIG.name}`}</title>
       </Head>
       <div className="min-h-[100dvh] bg-[#0a0f1a] text-white flex flex-col relative overflow-x-hidden">
         <div className="fixed inset-0 bg-[url('https://images.unsplash.com/photo-1508849789987-4e5333c12b78?auto=format&fit=crop&q=80&w=1200')] bg-cover bg-center opacity-[0.03] pointer-events-none" />
@@ -78,8 +78,9 @@ export default function Step4() {
           >
             <ChevronLeft className="w-5 h-5 text-white/70" />
           </button>
-          <div className="text-xs font-sans font-semibold text-white/50 tracking-[0.2em] uppercase bg-[#0c1220] px-4 py-1.5 rounded-full border border-white/10">
-            Step 4 of 6
+          <div className="text-xs font-sans font-semibold text-white/50 tracking-[0.2em] uppercase bg-[#0c1220] px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
+            {isUpdating && <Pencil className="w-3 h-3" />}
+            {isUpdating ? "Editing Profile" : "Step 4 of 6"}
           </div>
           <div className="w-10 h-10" />
         </header>
@@ -184,7 +185,7 @@ export default function Step4() {
                     : "bg-white/5 text-white/30 cursor-not-allowed border border-white/10"
                 }`}
               >
-                <span>Continue</span>
+                <span>{isUpdating ? "Save & Continue" : "Continue"}</span>
                 <ArrowRight className={`w-4 h-4 ${isValid ? "opacity-100" : "opacity-30"}`} />
               </button>
             </form>

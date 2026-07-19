@@ -91,7 +91,7 @@ export default function Completion() {
   return (
     <>
       <Head>
-        <title>You're Set | {APP_CONFIG.name}</title>
+        <title>{`You're Set | ${APP_CONFIG.name}`}</title>
       </Head>
       <div className="min-h-[100dvh] bg-[#0a0f1a] flex flex-col items-center justify-center p-6 text-white relative overflow-hidden">
         
