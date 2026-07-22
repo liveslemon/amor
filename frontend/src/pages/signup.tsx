@@ -25,10 +25,30 @@ export default function SignUp() {
     setLoading(true);
     setError("");
 
+    // Validate no fields are empty/whitespace
+    const trimmedName = formData.name.trim();
+    const trimmedPhone = formData.whatsapp_number.trim();
+    if (!trimmedName) {
+      setError("Name is required");
+      setLoading(false);
+      return;
+    }
+    if (trimmedPhone.length < 5) {
+      setError("A valid WhatsApp number is required");
+      setLoading(false);
+      return;
+    }
+    if (formData.password.length < 8) {
+      setError("Password must be at least 8 characters");
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await signup({
-        ...formData,
-        whatsapp_number: `+${formData.whatsapp_number}`,
+        name: trimmedName,
+        whatsapp_number: `+${trimmedPhone}`,
+        password: formData.password,
       });
 
       if (res.access_token && res.user) {
