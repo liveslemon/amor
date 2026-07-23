@@ -32,6 +32,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <meta name="facebook-domain-verification" content="jrqej54duyox78e8o3kj5kt8wo9vzp" />
+      </head>
       <body
         className={`${inter.variable} ${youngSerif.variable} ${permanentMarker.variable} antialiased bg-premium-gradient`}
       >

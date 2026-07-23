@@ -25,23 +25,36 @@ export const savePhotos = async (photos: any[]) => {
   return res.data;
 };
 
+export const completeOnboarding = async (data: {
+  profile: any;
+  preferences?: any;
+  focuses?: string[];
+  preferred_builds?: string[];
+  photos: any[];
+}) => {
+  const res = await API.post("/complete-onboarding", data);
+  return res.data;
+};
+
 export const uploadPhotoBinary = async (file: File) => {
   const formData = new FormData();
-  formData.append('file', file);
-  
-  const token = typeof window !== 'undefined' 
-    ? (localStorage.getItem("mingle_token") || localStorage.getItem("mingle_access_token")) 
-    : null;
+  formData.append("file", file);
+
+  const token =
+    typeof window !== "undefined"
+      ? localStorage.getItem("mingle_token") ||
+        localStorage.getItem("mingle_access_token")
+      : null;
   const headers: any = {};
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
   // We omit Content-Type so Axios/Browser generates it with correct boundary automatically
   const res = await API.post("/photos/upload", formData, {
-    headers
+    headers,
   });
-  return res.data; 
+  return res.data;
 };
 
 export const getMe = async () => {

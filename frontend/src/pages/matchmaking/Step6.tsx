@@ -13,8 +13,6 @@ import {
   Pencil,
 } from "lucide-react";
 import { useMatchStore } from "@/store/useMatchStore";
-import { useAuthStore } from "@/store/useAuthStore";
-import { supabase } from "@/lib/supabase";
 import { uploadPhotoBinary } from "@/api/profile";
 
 interface PhotoSlot {
@@ -25,17 +23,13 @@ interface PhotoSlot {
   isUploading: boolean;
 }
 
-const BUCKET_NAME = process.env.NEXT_PUBLIC_SUPABASE_BUCKET || "user-photos";
-
 export default function Step6() {
   const router = useRouter();
-  const { answers, setAnswer, isUpdating } = useMatchStore();
-  const { user } = useAuthStore();
+  const { setAnswer, isUpdating } = useMatchStore();
 
   const [photos, setPhotos] = useState<PhotoSlot[]>([
     { id: 1, file: null, preview: null, uploadedUrl: null, isUploading: false },
     { id: 2, file: null, preview: null, uploadedUrl: null, isUploading: false },
-    { id: 3, file: null, preview: null, uploadedUrl: null, isUploading: false },
   ]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -54,10 +48,28 @@ export default function Step6() {
     // Clear input
     e.target.value = "";
 
+    // Validate file is an image
+    const ALLOWED_TYPES = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/gif",
+    ];
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setError("Only image files are allowed (JPEG, PNG, WebP, GIF)");
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image must be under 5MB");
+      return;
+    }
+
     const slotIndex = photos.findIndex((p) => p.id === activeSlot);
     const previewUrl = URL.createObjectURL(file);
 
-    // 1. Optimistic UI state
+    // Optimistic UI state
     const newPhotos = [...photos];
     newPhotos[slotIndex] = {
       ...newPhotos[slotIndex],
@@ -70,27 +82,20 @@ export default function Step6() {
     setError("");
 
     try {
-      // 2. UPLOAD VIA OUR BACKEND PROXY (Secure, bypasses direct RLS)
       const { image_url } = await uploadPhotoBinary(file);
 
-      // 3. Record success state
       setPhotos((prev) =>
         prev.map((p) =>
           p.id === activeSlot
-            ? {
-                ...p,
-                uploadedUrl: image_url,
-                isUploading: false,
-              }
+            ? { ...p, uploadedUrl: image_url, isUploading: false }
             : p,
         ),
       );
     } catch (err: any) {
-      console.error("Direct Supabase Upload Error:", err);
+      console.error("Upload Error:", err);
       setError(
         err.message || "Upload failed. Please check your internet connection.",
       );
-      // Rollback UI slot
       setPhotos((prev) =>
         prev.map((p) =>
           p.id === activeSlot
@@ -124,23 +129,21 @@ export default function Step6() {
     );
   };
 
-  // Logic Check: User needs AT LEAST 2 photos successfully uploaded
   const validUploads = photos.filter((p) => p.uploadedUrl !== null);
-  const isValid = validUploads.length >= 2;
+  const isValid = validUploads.length >= 1;
   const isCurrentlyUploading = photos.some((p) => p.isUploading);
 
   const handleComplete = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid) return;
 
-    // Map to the photo payload required by backend schema
     const mappedPhotos = validUploads.map((p, index) => ({
       image_url: p.uploadedUrl,
       photo_type: index === 0 ? "Profile" : "Gallery",
       upload_order: index + 1,
     }));
 
-    setAnswer("uploaded_photos", mappedPhotos as any); // Store custom temp array
+    setAnswer("uploaded_photos", mappedPhotos as any);
     router.push("/matchmaking/Completion");
   };
 
@@ -180,13 +183,13 @@ export default function Step6() {
                 The <span className="italic font-light">Lookbook</span>
               </h1>
               <p className="text-white/50 text-sm font-light">
-                Show off your vibe. At least 2 clear photos required.
+                Show off your vibe. Upload up to 2 clear photos.
               </p>
             </div>
 
             <input
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp,image/gif"
               className="hidden"
               ref={fileInputRef}
               onChange={handleFileChange}
@@ -202,10 +205,6 @@ export default function Step6() {
                     handleSlotClick(slot.id)
                   }
                   className={`relative aspect-[3/4] rounded-xl border-2 border-dashed transition-all flex flex-col items-center justify-center overflow-hidden cursor-pointer group ${
-                    index === 0
-                      ? "col-span-2 aspect-[4/3] md:aspect-[16/9]"
-                      : ""
-                  } ${
                     slot.preview
                       ? "border-solid border-white/20"
                       : "border-white/10 hover:border-white/30 hover:bg-white/[0.02]"
@@ -269,7 +268,7 @@ export default function Step6() {
               >
                 <span>
                   {isCurrentlyUploading
-                    ? "Uploading Assets..."
+                    ? "Uploading..."
                     : isUpdating
                       ? "Update Profile"
                       : "Finalize Profile"}

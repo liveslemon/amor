@@ -6,6 +6,40 @@ import { motion } from "framer-motion";
 import { ArrowRight, ChevronLeft, Pencil } from "lucide-react";
 import { useMatchStore } from "@/store/useMatchStore";
 
+const SelectionGroup = ({
+  label,
+  options,
+  selected,
+  onSelect,
+}: {
+  label: string;
+  options: string[];
+  selected: string;
+  onSelect: (val: string) => void;
+}) => (
+  <div className="flex flex-col gap-3">
+    <label className="text-xs uppercase tracking-widest text-white/40 font-medium ml-1">
+      {label}
+    </label>
+    <div className="flex flex-wrap gap-2">
+      {options.map((opt) => (
+        <button
+          key={opt}
+          type="button"
+          onClick={() => onSelect(opt)}
+          className={`px-4 py-2.5 rounded-full text-sm font-sans transition-all duration-200 border cursor-pointer outline-none ${
+            selected === opt
+              ? "bg-white text-black border-white"
+              : "bg-transparent text-white/60 border-white/10 hover:border-white/30 hover:bg-white/[0.02]"
+          }`}
+        >
+          {opt}
+        </button>
+      ))}
+    </div>
+  </div>
+);
+
 export default function Step3() {
   const router = useRouter();
   const { answers, setAnswer, isUpdating } = useMatchStore();
@@ -38,40 +72,6 @@ export default function Step3() {
 
     router.push("/matchmaking/Step4");
   };
-
-  const SelectionGroup = ({
-    label,
-    options,
-    selected,
-    onSelect,
-  }: {
-    label: string;
-    options: string[];
-    selected: string;
-    onSelect: (val: string) => void;
-  }) => (
-    <div className="flex flex-col gap-3">
-      <label className="text-xs uppercase tracking-widest text-white/40 font-medium ml-1">
-        {label}
-      </label>
-      <div className="flex flex-wrap gap-2">
-        {options.map((opt) => (
-          <button
-            key={opt}
-            type="button"
-            onClick={() => onSelect(opt)}
-            className={`px-4 py-2.5 rounded-full text-sm font-sans transition-all duration-200 border cursor-pointer outline-none ${
-              selected === opt
-                ? "bg-white text-black border-white"
-                : "bg-transparent text-white/60 border-white/10 hover:border-white/30 hover:bg-white/[0.02]"
-            }`}
-          >
-            {opt}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
 
   return (
     <>

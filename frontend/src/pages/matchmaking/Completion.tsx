@@ -5,13 +5,7 @@ import { useRouter } from "next/router";
 import { motion } from "framer-motion";
 import { Check, Home, Loader2 } from "lucide-react";
 import { useMatchStore } from "@/store/useMatchStore";
-import {
-  saveProfile,
-  savePreferences,
-  saveFocuses,
-  savePreferredBuilds,
-  savePhotos,
-} from "@/api/profile";
+import { completeOnboarding } from "@/api/profile";
 
 export default function Completion() {
   const router = useRouter();
@@ -25,8 +19,8 @@ export default function Completion() {
 
     const persistOnboardingData = async () => {
       try {
-        // 1. Profile
-        await saveProfile({
+        // Build the atomic payload — only include fields with actual values
+        const rawProfile: Record<string, any> = {
           gender: answers.gender,
           age: answers.age,
           height: answers.height,
@@ -44,35 +38,41 @@ export default function Completion() {
             : answers.green_flag,
           instagram: answers.instagram,
           tiktok: answers.tiktok,
-        });
+        };
 
-        // 2. Preferences
+        // Strip undefined/null keys so backend .strict() validation doesn't reject them
+        const profile = Object.fromEntries(
+          Object.entries(rawProfile).filter(([, v]) => v != null && v !== ""),
+        );
+
+        const payload: any = {
+          profile,
+          photos: answers.uploaded_photos || [],
+        };
+
+        // Optional fields
         if (answers.preferred_min_age || answers.preferred_max_age) {
-          await savePreferences({
+          payload.preferences = {
             preferred_min_age: answers.preferred_min_age,
             preferred_max_age: answers.preferred_max_age,
             preferred_min_height: answers.preferred_min_height,
             preferred_max_height: answers.preferred_max_height,
-          });
+          };
         }
 
-        // 3. Focuses
         if (answers.focuses && Array.isArray(answers.focuses)) {
-          await saveFocuses(answers.focuses as string[]);
+          payload.focuses = answers.focuses;
         }
 
-        // 4. Preferred Builds
         if (
           answers.preferred_builds &&
           Array.isArray(answers.preferred_builds)
         ) {
-          await savePreferredBuilds(answers.preferred_builds as string[]);
+          payload.preferred_builds = answers.preferred_builds;
         }
 
-        // 5. Uploaded Photos
-        if (answers.uploaded_photos && Array.isArray(answers.uploaded_photos)) {
-          await savePhotos(answers.uploaded_photos);
-        }
+        // Single atomic call - no partial data on failure
+        await completeOnboarding(payload);
 
         setSaving(false);
         // Smooth redirection to the dedicated success screen
@@ -80,11 +80,17 @@ export default function Completion() {
           router.push("/registration-complete");
         }, 1200);
       } catch (err: any) {
+        const details = err.response?.data?.details;
+        const detailStr = details
+          ? typeof details === "object"
+            ? JSON.stringify(details.fieldErrors || details, null, 2)
+            : String(details)
+          : "";
         setError(
-          err.response?.data?.message ||
-            err.response?.data?.error ||
+          err.response?.data?.error ||
+            err.response?.data?.message ||
             err.message ||
-            "Failed to save profile",
+            "Failed to save profile" + (detailStr ? `\n${detailStr}` : ""),
         );
         setSaving(false);
       }
@@ -94,7 +100,8 @@ export default function Completion() {
     if (Object.keys(answers).length > 0) {
       persistOnboardingData();
     } else {
-      setSaving(false);
+      // No answers in store (e.g. page reload) — redirect back to start
+      router.replace("/matchmaking/Step1");
     }
   }, [answers]);
 
