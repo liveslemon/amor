@@ -47,7 +47,6 @@ export default function Completion() {
 
         const payload: any = {
           profile,
-          photos: answers.uploaded_photos || [],
         };
 
         // Optional fields

@@ -47,7 +47,7 @@ export default function SignUp() {
     try {
       const res = await signup({
         name: trimmedName,
-        whatsapp_number: `+${trimmedPhone}`,
+        whatsapp_number: `+234${trimmedPhone}`,
         password: formData.password,
       });
 
@@ -167,13 +167,13 @@ export default function SignUp() {
                   className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-6 py-4 text-white text-lg outline-none focus:border-white/30 transition-colors placeholder:text-white/20"
                 />
                 <div className="flex w-full">
-                  <div className="flex items-center justify-center bg-[#0a0f1a]/50 border border-white/10 border-r-0 rounded-l-xl px-4 text-white/50 text-lg select-none">
-                    +
-                  </div>
+                  <span className="bg-[#0a0f1a]/50 border border-white/10 border-r-0 rounded-l-xl px-3 py-4 text-white text-sm flex items-center whitespace-nowrap shrink-0">
+                    🇳🇬 +234
+                  </span>
                   <input
                     type="tel"
                     inputMode="numeric"
-                    placeholder="234XXXXXXXXXX"
+                    placeholder="80XXXXXXXX"
                     required
                     value={formData.whatsapp_number}
                     onChange={(e) =>

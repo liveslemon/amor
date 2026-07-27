@@ -28,7 +28,7 @@ export default function Login() {
     try {
       const res = await login({
         ...formData,
-        whatsapp_number: `+${formData.whatsapp_number}`,
+        whatsapp_number: `+234${formData.whatsapp_number}`,
       });
 
       if (res.access_token && res.user) {
@@ -118,13 +118,13 @@ export default function Login() {
               )}
 
               <div className="flex w-full">
-                <div className="flex items-center justify-center bg-[#0a0f1a]/50 border border-white/10 border-r-0 rounded-l-xl px-4 text-white/50 text-lg select-none">
-                  +
-                </div>
+                <span className="bg-[#0a0f1a]/50 border border-white/10 border-r-0 rounded-l-xl px-3 py-4 text-white text-sm flex items-center whitespace-nowrap shrink-0">
+                  🇳🇬 +234
+                </span>
                 <input
                   type="tel"
                   inputMode="numeric"
-                  placeholder="234XXXXXXXXXX"
+                  placeholder="80XXXXXXXX"
                   required
                   value={formData.whatsapp_number}
                   onChange={(e) =>

@@ -87,7 +87,7 @@ export default function Step4() {
           </button>
           <div className="text-xs font-sans font-semibold text-white/50 tracking-[0.2em] uppercase bg-[#0c1220] px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
             {isUpdating && <Pencil className="w-3 h-3" />}
-            {isUpdating ? "Editing Profile" : "Step 4 of 6"}
+            {isUpdating ? "Editing Profile" : "Step 4 of 5"}
           </div>
           <div className="w-10 h-10" />
         </header>
