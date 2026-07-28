@@ -189,6 +189,7 @@ export default function Step4() {
                     type="text"
                     placeholder="johndoe"
                     value={instagram}
+                    maxLength={120}
                     onChange={(e) => setInstagram(e.target.value)}
                     className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl pl-10 pr-5 py-4 text-white text-base outline-none focus:border-white/30 transition-colors"
                   />

@@ -237,6 +237,8 @@ export default function Step5() {
   const isValid =
     minAge !== "" &&
     maxAge !== "" &&
+    parseInt(minAge, 10) >= 18 &&
+    parseInt(maxAge, 10) >= 18 &&
     minHeightFeet !== "" &&
     minHeightInches !== "" &&
     maxHeightFeet !== "" &&
