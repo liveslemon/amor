@@ -1,6 +1,10 @@
 import { create } from "zustand";
 
-type AnswerValue = string | number | string[];
+type AnswerValue =
+  | string
+  | number
+  | string[]
+  | { feet: number; inches: number };
 
 interface MatchState {
   answers: Record<string, AnswerValue>;
@@ -12,7 +16,13 @@ interface MatchState {
   setAnswer: (id: string, value: AnswerValue) => void;
   isUpdating: boolean;
   setIsUpdating: (val: boolean) => void;
-  hydrateProfile: (profile: any, preferences: any, focuses: string[], builds: string[], photos: any[]) => void;
+  hydrateProfile: (
+    profile: any,
+    preferences: any,
+    focuses: string[],
+    builds: string[],
+    photos: any[],
+  ) => void;
   next: () => void;
   back: () => void;
   reset: () => void;
@@ -42,6 +52,15 @@ export const useMatchStore = create<MatchState>((set) => ({
     set({
       answers: {
         ...profile,
+        // Convert green_flag from comma-separated string to array for Step4
+        green_flag: profile?.green_flag
+          ? typeof profile.green_flag === "string"
+            ? profile.green_flag
+                .split(",")
+                .map((s: string) => s.trim())
+                .filter(Boolean)
+            : profile.green_flag
+          : [],
         ...preferences,
         focuses,
         preferred_builds: builds,

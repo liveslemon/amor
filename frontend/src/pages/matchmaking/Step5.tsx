@@ -176,11 +176,41 @@ export default function Step5() {
   const [maxAge, setMaxAge] = useState(
     (answers.preferred_max_age as string) || "22",
   );
-  const [minHeight, setMinHeight] = useState(
-    (answers.preferred_min_height as string) || "150",
+  const storedMinHeight = answers.preferred_min_height as
+    | { feet: number; inches: number }
+    | number
+    | null;
+  const storedMaxHeight = answers.preferred_max_height as
+    | { feet: number; inches: number }
+    | number
+    | null;
+  const [minHeightFeet, setMinHeightFeet] = useState(
+    storedMinHeight
+      ? typeof storedMinHeight === "object"
+        ? String(storedMinHeight.feet)
+        : String(Math.floor(Number(storedMinHeight) / 12))
+      : "5",
   );
-  const [maxHeight, setMaxHeight] = useState(
-    (answers.preferred_max_height as string) || "210",
+  const [minHeightInches, setMinHeightInches] = useState(
+    storedMinHeight != null
+      ? typeof storedMinHeight === "object"
+        ? String(storedMinHeight.inches)
+        : String(Number(storedMinHeight) % 12)
+      : "0",
+  );
+  const [maxHeightFeet, setMaxHeightFeet] = useState(
+    storedMaxHeight
+      ? typeof storedMaxHeight === "object"
+        ? String(storedMaxHeight.feet)
+        : String(Math.floor(Number(storedMaxHeight) / 12))
+      : "6",
+  );
+  const [maxHeightInches, setMaxHeightInches] = useState(
+    storedMaxHeight != null
+      ? typeof storedMaxHeight === "object"
+        ? String(storedMaxHeight.inches)
+        : String(Number(storedMaxHeight) % 12)
+      : "6",
   );
   const [preferredBuilds, setPreferredBuilds] = useState<string[]>(
     (answers.preferred_builds as string[]) || [],
@@ -207,6 +237,10 @@ export default function Step5() {
   const isValid =
     minAge !== "" &&
     maxAge !== "" &&
+    minHeightFeet !== "" &&
+    minHeightInches !== "" &&
+    maxHeightFeet !== "" &&
+    maxHeightInches !== "" &&
     preferredBuilds.length > 0 &&
     parseInt(minAge, 10) <= parseInt(maxAge, 10);
 
@@ -216,11 +250,17 @@ export default function Step5() {
 
     setAnswer("preferred_min_age", parseInt(minAge, 10));
     setAnswer("preferred_max_age", parseInt(maxAge, 10));
-    setAnswer("preferred_min_height", parseInt(minHeight, 10));
-    setAnswer("preferred_max_height", parseInt(maxHeight, 10));
+    setAnswer("preferred_min_height", {
+      feet: parseInt(minHeightFeet, 10),
+      inches: parseInt(minHeightInches, 10),
+    });
+    setAnswer("preferred_max_height", {
+      feet: parseInt(maxHeightFeet, 10),
+      inches: parseInt(maxHeightInches, 10),
+    });
     setAnswer("preferred_builds", preferredBuilds);
 
-    router.push("/matchmaking/Step6");
+    router.push("/matchmaking/Completion");
   };
 
   return (
@@ -240,7 +280,7 @@ export default function Step5() {
           </button>
           <div className="text-xs font-sans font-semibold text-white/50 tracking-[0.2em] uppercase bg-[#0c1220] px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
             {isUpdating && <Pencil className="w-3 h-3" />}
-            {isUpdating ? "Editing Profile" : "Step 5 of 6"}
+            {isUpdating ? "Editing Profile" : "Step 5 of 5"}
           </div>
           <div className="w-10 h-10" />
         </header>
@@ -317,23 +357,59 @@ export default function Step5() {
 
               <div className="flex flex-col gap-3">
                 <label className="text-xs uppercase tracking-widest text-white/40 font-medium ml-1">
-                  Height Range (cm)
+                  Preferred Height Range (ft / in)
                 </label>
                 <div className="grid grid-cols-2 gap-4">
-                  <input
-                    type="number"
-                    placeholder="Min Height"
-                    value={minHeight}
-                    onChange={(e) => setMinHeight(e.target.value)}
-                    className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-4 py-3 text-white text-center outline-none focus:border-white/30"
-                  />
-                  <input
-                    type="number"
-                    placeholder="Max Height"
-                    value={maxHeight}
-                    onChange={(e) => setMaxHeight(e.target.value)}
-                    className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-4 py-3 text-white text-center outline-none focus:border-white/30"
-                  />
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] text-white/30 ml-1">Min</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="3"
+                        max="7"
+                        placeholder="5"
+                        value={minHeightFeet}
+                        onChange={(e) => setMinHeightFeet(e.target.value)}
+                        className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-3 py-3 text-white text-center text-sm outline-none focus:border-white/30"
+                      />
+                      <span className="text-white/30 text-xs shrink-0">ft</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="11"
+                        placeholder="0"
+                        value={minHeightInches}
+                        onChange={(e) => setMinHeightInches(e.target.value)}
+                        className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-3 py-3 text-white text-center text-sm outline-none focus:border-white/30"
+                      />
+                      <span className="text-white/30 text-xs shrink-0">in</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] text-white/30 ml-1">Max</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="3"
+                        max="7"
+                        placeholder="6"
+                        value={maxHeightFeet}
+                        onChange={(e) => setMaxHeightFeet(e.target.value)}
+                        className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-3 py-3 text-white text-center text-sm outline-none focus:border-white/30"
+                      />
+                      <span className="text-white/30 text-xs shrink-0">ft</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="11"
+                        placeholder="6"
+                        value={maxHeightInches}
+                        onChange={(e) => setMaxHeightInches(e.target.value)}
+                        className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-3 py-3 text-white text-center text-sm outline-none focus:border-white/30"
+                      />
+                      <span className="text-white/30 text-xs shrink-0">in</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -346,7 +422,9 @@ export default function Step5() {
                     : "bg-white/5 text-white/30 cursor-not-allowed border border-white/10"
                 }`}
               >
-                <span>{isUpdating ? "Save & Continue" : "Continue"}</span>
+                <span>
+                  {isUpdating ? "Update Profile" : "Finalize Profile"}
+                </span>
                 <ArrowRight
                   className={`w-4 h-4 ${isValid ? "opacity-100" : "opacity-30"}`}
                 />

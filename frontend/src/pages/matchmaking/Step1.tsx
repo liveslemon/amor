@@ -223,10 +223,32 @@ export default function Step1() {
 
   const [gender, setGender] = useState((answers.gender as string) || "");
   const [age, setAge] = useState((answers.age as string) || "");
-  const [height, setHeight] = useState((answers.height as string) || "");
+  const storedHeight = answers.height as
+    | { feet: number; inches: number }
+    | number
+    | null;
+  const [heightFeet, setHeightFeet] = useState(
+    storedHeight
+      ? typeof storedHeight === "object"
+        ? String(storedHeight.feet)
+        : String(Math.floor(Number(storedHeight) / 12))
+      : "",
+  );
+  const [heightInches, setHeightInches] = useState(
+    storedHeight != null
+      ? typeof storedHeight === "object"
+        ? String(storedHeight.inches)
+        : String(Number(storedHeight) % 12)
+      : "",
+  );
   const [build, setBuild] = useState((answers.build as string) || "");
 
-  const isValid = gender !== "" && age !== "" && height !== "" && build !== "";
+  const isValid =
+    gender !== "" &&
+    age !== "" &&
+    heightFeet !== "" &&
+    heightInches !== "" &&
+    build !== "";
 
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault();
@@ -234,7 +256,10 @@ export default function Step1() {
 
     setAnswer("gender", gender);
     setAnswer("age", parseInt(age, 10));
-    setAnswer("height", parseInt(height, 10));
+    setAnswer("height", {
+      feet: parseInt(heightFeet, 10),
+      inches: parseInt(heightInches, 10),
+    });
     setAnswer("build", build);
 
     router.push("/matchmaking/Step2");
@@ -257,7 +282,7 @@ export default function Step1() {
           </button>
           <div className="text-xs font-sans font-semibold text-white/50 tracking-[0.2em] uppercase bg-[#0c1220] px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
             {isUpdating && <Pencil className="w-3 h-3" />}
-            {isUpdating ? "Editing Profile" : "Step 1 of 6"}
+            {isUpdating ? "Editing Profile" : "Step 1 of 5"}
           </div>
           <div className="w-10 h-10" />
         </header>
@@ -288,7 +313,7 @@ export default function Step1() {
                 onSelect={setGender}
               />
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="flex flex-col gap-2">
                   <label className="text-xs uppercase tracking-widest text-white/40 font-medium ml-1">
                     Age
@@ -305,15 +330,29 @@ export default function Step1() {
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-xs uppercase tracking-widest text-white/40 font-medium ml-1">
-                    Height (cm)
+                    Height (ft)
                   </label>
                   <input
                     type="number"
-                    min="100"
-                    max="250"
-                    placeholder="e.g. 175"
-                    value={height}
-                    onChange={(e) => setHeight(e.target.value)}
+                    min="3"
+                    max="7"
+                    placeholder="ft"
+                    value={heightFeet}
+                    onChange={(e) => setHeightFeet(e.target.value)}
+                    className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-4 py-3 text-white text-lg outline-none focus:border-white/30 transition-colors"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs uppercase tracking-widest text-white/40 font-medium ml-1">
+                    Height (in)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="11"
+                    placeholder="in"
+                    value={heightInches}
+                    onChange={(e) => setHeightInches(e.target.value)}
                     className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-4 py-3 text-white text-lg outline-none focus:border-white/30 transition-colors"
                   />
                 </div>
