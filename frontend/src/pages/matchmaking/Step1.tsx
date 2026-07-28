@@ -246,6 +246,7 @@ export default function Step1() {
   const isValid =
     gender !== "" &&
     age !== "" &&
+    parseInt(age, 10) >= 18 &&
     heightFeet !== "" &&
     heightInches !== "" &&
     build !== "";

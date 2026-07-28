@@ -49,7 +49,7 @@ export default function Completion() {
           profile,
         };
 
-        // Optional fields
+        // 2. Preferences
         if (answers.preferred_min_age || answers.preferred_max_age) {
           payload.preferences = {
             preferred_min_age: answers.preferred_min_age,
@@ -59,15 +59,27 @@ export default function Completion() {
           };
         }
 
-        if (answers.focuses && Array.isArray(answers.focuses)) {
+        // 3. Focuses (Must be non-empty if sent)
+        if (
+          answers.focuses &&
+          Array.isArray(answers.focuses) &&
+          (answers.focuses as string[]).length > 0
+        ) {
           payload.focuses = answers.focuses;
         }
 
+        // 4. Preferred Builds (Must be non-empty if sent)
         if (
           answers.preferred_builds &&
-          Array.isArray(answers.preferred_builds)
+          Array.isArray(answers.preferred_builds) &&
+          (answers.preferred_builds as string[]).length > 0
         ) {
           payload.preferred_builds = answers.preferred_builds;
+        }
+
+        // 5. Photos - CRITICAL Missing Piece
+        if (answers.uploaded_photos && Array.isArray(answers.uploaded_photos)) {
+          payload.photos = answers.uploaded_photos;
         }
 
         // Single atomic call - no partial data on failure
