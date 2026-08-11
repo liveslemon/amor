@@ -149,10 +149,10 @@ const Footer = () => {
             </Link>
 
             <Link
-              href="/cookies"
+              href="/delete-data"
               className="hover:text-white transition-colors"
             >
-              Cookies
+              Delete your data
             </Link>
           </div>
         </div>
