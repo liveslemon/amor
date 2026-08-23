@@ -122,14 +122,23 @@ h1, h2, h3, h4, h5, h6 {
   margin-top: 0.55rem;
 }
 
-.legal-copy a {
+.legal-copy a:not(.legal-action) {
   color: #ffb6c1;
   text-decoration: underline;
   text-decoration-color: rgba(255, 182, 193, 0.45);
   text-underline-offset: 3px;
 }
 
-.legal-copy a:hover {
+.legal-copy a:not(.legal-action):hover {
+  color: white;
+}
+
+.legal-copy .legal-action {
+  color: #000B1A;
+  text-decoration: none;
+}
+
+.legal-copy .legal-action:hover {
   color: white;
 }
 

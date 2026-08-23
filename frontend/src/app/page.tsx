@@ -3,6 +3,7 @@ import Footer from "@/components/layout/Footer";
 import Hero from "@/components/sections/Hero";
 import HowItWorks from "@/components/sections/HowItWorks";
 import Features from "@/components/sections/Features";
+import UpcomingEvents from "@/components/sections/UpcomingEvents";
 import FAQ from "@/components/sections/FAQ";
 import SuccessStories from "@/components/sections/SuccessStories";
 import ZigZagSeparator from "@/components/ui/ZigZagSeparator";
@@ -29,6 +30,12 @@ export default function Home() {
       <StickySection className="z-30">
         <ZigZagSeparator color="#070b14" height={24} />
         <Features />
+      </StickySection>
+
+      {/* UPCOMING EVENTS */}
+      <StickySection className="z-35">
+        <ZigZagSeparator color="#0c1220" height={24} />
+        <UpcomingEvents />
       </StickySection>
 
       {/* SUCCESS STORIES */}

@@ -1,0 +1,32 @@
+[
+  {
+    "slug": "mingle-at-wet-wars",
+    "id": "123e4567-e89b-12d3-a456-426614174001",
+    "category": "Pool party",
+    "badge": "Selling Fast",
+    "cta": "Reserve Your Spot",
+    "title": "WET WARS 2.0",
+    "date": "28th & 29th August 2026",
+    "time": "9:00 PM",
+    "location": "Unilag Guest House, Akoka",
+    "price": "From NGN 3500",
+    "vibe": "High-Energy • Amapiano • Fun",
+    "image": "/assets/wet-wars.jpeg",
+    "description": "The after-exam therapy. No water gun, no therapy."
+  },
+  {
+    "slug": "rave-district",
+    "id": "evt_002",
+    "category": "Date Night",
+    "badge": "Limited Seats",
+    "cta": "Reserve Your Spot",
+    "title": "RAVE DISTRICT",
+    "date": "27th August 2026",
+    "time": "9:00 PM",
+    "location": "Unilag Guest House, Akoka",
+    "price": "From NGN 4,000",
+    "vibe": "Warm • Intimate • Conversational",
+    "image": "/assets/rave-district.jpeg",
+    "description": "A relaxed brunch experience made for easy chemistry, great photos, and real conversation."
+  }
+]

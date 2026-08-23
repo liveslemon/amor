@@ -36,7 +36,7 @@ export default function DeleteDataPage() {
           href={deletionRequestUrl}
           target="_blank"
           rel="noreferrer"
-          className="mt-5 inline-flex items-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#0a0f1a] transition-transform hover:scale-[1.02]"
+          className="legal-action mt-5 inline-flex items-center rounded-full bg-black px-5 py-3 text-sm font-semibold text-[#000B1A] transition-all hover:scale-[1.02] hover:bg-[#f22947] hover:text-white focus:outline-none focus:ring-2 focus:ring-[#f22947] focus:ring-offset-2"
         >
           Request data deletion on WhatsApp ↗
         </a>
