@@ -156,8 +156,12 @@ export default function EventDetailsPage({ event }: Props) {
     setSuccess("");
 
     try {
+      const formattedNum = loginForm.whatsapp_number.startsWith('0') 
+        ? loginForm.whatsapp_number.substring(1) 
+        : loginForm.whatsapp_number;
+
       const res = await login({
-        whatsapp_number: `+234${loginForm.whatsapp_number}`,
+        whatsapp_number: `+234${formattedNum}`,
         password: loginForm.password,
       });
 
@@ -193,9 +197,13 @@ export default function EventDetailsPage({ event }: Props) {
     setSuccess("");
 
     try {
+      const formattedNum = signupForm.whatsapp_number.startsWith('0') 
+        ? signupForm.whatsapp_number.substring(1) 
+        : signupForm.whatsapp_number;
+
       const res = await signup({
         name: signupForm.name,
-        whatsapp_number: `+234${signupForm.whatsapp_number}`,
+        whatsapp_number: `+234${formattedNum}`,
         password: signupForm.password,
       });
 
