@@ -102,6 +102,23 @@ export const registerForEvent = async (data: EventRegistrationPayload) => {
 };
 
 /**
+ * Helper to get the public URL for an event image from the Supabase 'events' bucket.
+ */
+const getEventImageUrl = (imagePath: string | undefined | null) => {
+  if (!imagePath) return "";
+  // If it's already a full URL or a local asset, return it directly
+  if (imagePath.startsWith("http") || imagePath.startsWith("/assets")) {
+    return imagePath;
+  }
+  
+  if (supabase) {
+    const { data } = supabase.storage.from("events").getPublicUrl(imagePath);
+    return data.publicUrl;
+  }
+  return imagePath;
+};
+
+/**
  * Fetch all events from the `events` DB table.
  */
 export const fetchEvents = async () => {
@@ -113,7 +130,10 @@ export const fetchEvents = async () => {
         .order("created_at", { ascending: true });
 
       if (!error && data) {
-        return data;
+        return data.map((event) => ({
+          ...event,
+          image: getEventImageUrl(event.image),
+        }));
       }
       if (error) {
         console.error("Supabase events fetch error:", error);
@@ -138,7 +158,10 @@ export const getEventBySlug = async (slug: string) => {
         .maybeSingle();
 
       if (!error && data) {
-        return data;
+        return {
+          ...data,
+          image: getEventImageUrl(data.image),
+        };
       }
       if (error) {
         console.error("Supabase event by slug fetch error:", error);
