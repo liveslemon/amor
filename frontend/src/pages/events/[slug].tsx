@@ -75,31 +75,27 @@ export default function EventDetailsPage({ event }: Props) {
     user: any,
     source: "login" | "signup" | "authenticated_user",
   ) => {
-    try {
-      await registerForEvent({
-        event_id: event.id,
-        user_id: user?.id,
-        event_slug: event.slug,
-        event_name: event.title,
-        status: "attending",
-        attendance_status: "going",
-        is_attending: true,
-        ticket_purchased: false,
-        type: "rsvp_attendance",
-        user: {
-          id: user?.id,
-          name: user?.name,
-          whatsapp_number: user?.whatsapp_number,
-          onboarding_completed: user?.onboarding_completed,
-        },
-        source,
-        attendee_notes: notes || undefined,
-        agreed_to_terms: agreedToTerms,
-        registered_at: new Date().toISOString(),
-      });
-    } catch (err) {
-      console.warn("Event attendance registration recorded:", err);
-    }
+    await registerForEvent({
+      event_id: event.id,
+      user_id: user?.id,
+      event_slug: event.slug,
+      event_name: event.title,
+      status: "attending",
+      attendance_status: "going",
+      is_attending: true,
+      ticket_purchased: false,
+      type: "rsvp_attendance",
+      user: {
+        id: user?.id,
+        name: user?.name,
+        whatsapp_number: user?.whatsapp_number,
+        onboarding_completed: user?.onboarding_completed,
+      },
+      source,
+      attendee_notes: notes || undefined,
+      agreed_to_terms: agreedToTerms,
+      registered_at: new Date().toISOString(),
+    });
 
     // Save locally to persist attendance state
     if (typeof window !== "undefined") {
