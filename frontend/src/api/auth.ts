@@ -16,6 +16,7 @@ export const login = async (data: {
   whatsapp_number: string;
   password: string;
 }) => {
+  console.log("SENDING LOGIN PAYLOAD:", data);
   const res = await API.post("/auth/login", data);
   if (typeof window !== 'undefined' && res.data.access_token) {
     localStorage.setItem("mingle_token", res.data.access_token);

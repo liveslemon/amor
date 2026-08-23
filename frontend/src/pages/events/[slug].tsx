@@ -17,7 +17,12 @@ import {
 import { APP_CONFIG } from "@/config/app";
 import { login, signup } from "@/api/auth";
 import { getMe } from "@/api/profile";
-import { checkIsUserAttending, registerForEvent, fetchEvents, getEventBySlug } from "@/api/events";
+import {
+  checkIsUserAttending,
+  registerForEvent,
+  fetchEvents,
+  getEventBySlug,
+} from "@/api/events";
 import { useAuthStore } from "@/store/useAuthStore";
 
 type Event = {
@@ -129,8 +134,9 @@ export default function EventDetailsPage({ event }: Props) {
     setSuccess("");
 
     try {
-      const me = await getMe().catch(() => currentUser);
-      await submitRegistration(me, "authenticated_user");
+      const meData = await getMe().catch(() => null);
+      const userObj = meData?.user || currentUser;
+      await submitRegistration(userObj, "authenticated_user");
     } catch (err: any) {
       setError(
         err.response?.data?.message ||
@@ -157,8 +163,9 @@ export default function EventDetailsPage({ event }: Props) {
 
       if (res.access_token && res.user) {
         setAuth(res.access_token, res.user);
-        const me = await getMe().catch(() => res.user);
-        await submitRegistration(me, "login");
+        const meData = await getMe().catch(() => null);
+        const userObj = meData?.user || res.user;
+        await submitRegistration(userObj, "login");
 
         if (!res.user.onboarding_completed) {
           if (typeof window !== "undefined") {
@@ -195,7 +202,7 @@ export default function EventDetailsPage({ event }: Props) {
       if (res.access_token && res.user) {
         setAuth(res.access_token, res.user);
         await submitRegistration(res.user, "signup");
-        
+
         if (typeof window !== "undefined") {
           sessionStorage.setItem("returnToEvent", router.asPath);
         }
@@ -315,11 +322,11 @@ export default function EventDetailsPage({ event }: Props) {
                         You're on the list!
                       </p>
                       <p className="text-xs mt-1 text-emerald-200/90 leading-relaxed">
-                        We've recorded in the database that you're going to{" "}
+                        We've recorded that you're going to{" "}
                         <span className="font-semibold text-white">
                           {event.title}
                         </span>
-                        . Gate/entry fees are settled directly at the venue.
+                        . Tickets can be bought online.
                       </p>
                     </div>
                   </div>
