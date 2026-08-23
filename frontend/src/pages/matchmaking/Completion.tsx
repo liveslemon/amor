@@ -10,13 +10,10 @@ import { completeOnboarding } from "@/api/profile";
 export default function Completion() {
   const router = useRouter();
   const { answers, isUpdating } = useMatchStore();
-  const [mounted, setMounted] = useState(false);
   const [saving, setSaving] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setMounted(true);
-
     const persistOnboardingData = async () => {
       try {
         // Build the atomic payload — only include fields with actual values
@@ -26,16 +23,8 @@ export default function Completion() {
           height: answers.height,
           build: answers.build,
           skin_tone: answers.skin_tone,
-          personal_style: answers.personal_style,
-          social_persona: answers.social_persona,
-          weekend_type: answers.weekend_type,
-          afternoon_activity: answers.afternoon_activity,
-          habits: answers.habits,
           conflict_style: answers.conflict_style,
           relationship_goal: answers.relationship_goal,
-          green_flag: Array.isArray(answers.green_flag)
-            ? answers.green_flag.join(", ")
-            : answers.green_flag,
           instagram: answers.instagram,
           tiktok: answers.tiktok,
         };
@@ -49,7 +38,7 @@ export default function Completion() {
           profile,
         };
 
-        // Optional fields
+        // 2. Preferences
         if (answers.preferred_min_age || answers.preferred_max_age) {
           payload.preferences = {
             preferred_min_age: answers.preferred_min_age,
@@ -59,13 +48,11 @@ export default function Completion() {
           };
         }
 
-        if (answers.focuses && Array.isArray(answers.focuses)) {
-          payload.focuses = answers.focuses;
-        }
-
+        // Preferred body types
         if (
           answers.preferred_builds &&
-          Array.isArray(answers.preferred_builds)
+          Array.isArray(answers.preferred_builds) &&
+          (answers.preferred_builds as string[]).length > 0
         ) {
           payload.preferred_builds = answers.preferred_builds;
         }

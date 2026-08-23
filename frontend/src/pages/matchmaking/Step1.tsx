@@ -242,13 +242,96 @@ export default function Step1() {
       : "",
   );
   const [build, setBuild] = useState((answers.build as string) || "");
+  const [skinTone, setSkinTone] = useState(
+    (answers.skin_tone as string) || "",
+  );
+  const [minAge, setMinAge] = useState(
+    String(answers.preferred_min_age ?? ""),
+  );
+  const [maxAge, setMaxAge] = useState(
+    String(answers.preferred_max_age ?? ""),
+  );
+  const storedMinHeight = answers.preferred_min_height as
+    | { feet: number; inches: number }
+    | number
+    | null;
+  const storedMaxHeight = answers.preferred_max_height as
+    | { feet: number; inches: number }
+    | number
+    | null;
+  const [minHeightFeet, setMinHeightFeet] = useState(
+    storedMinHeight
+      ? typeof storedMinHeight === "object"
+        ? String(storedMinHeight.feet)
+        : String(Math.floor(Number(storedMinHeight) / 12))
+      : "",
+  );
+  const [minHeightInches, setMinHeightInches] = useState(
+    storedMinHeight != null
+      ? typeof storedMinHeight === "object"
+        ? String(storedMinHeight.inches)
+        : String(Number(storedMinHeight) % 12)
+      : "",
+  );
+  const [maxHeightFeet, setMaxHeightFeet] = useState(
+    storedMaxHeight
+      ? typeof storedMaxHeight === "object"
+        ? String(storedMaxHeight.feet)
+        : String(Math.floor(Number(storedMaxHeight) / 12))
+      : "",
+  );
+  const [maxHeightInches, setMaxHeightInches] = useState(
+    storedMaxHeight != null
+      ? typeof storedMaxHeight === "object"
+        ? String(storedMaxHeight.inches)
+        : String(Number(storedMaxHeight) % 12)
+      : "",
+  );
+  const [preferredBuilds, setPreferredBuilds] = useState<string[]>(
+    (answers.preferred_builds as string[]) || [],
+  );
+
+  const isHeightValid = (feet: string, inches: string) => {
+    const parsedFeet = Number(feet);
+    const parsedInches = Number(inches);
+    return (
+      Number.isInteger(parsedFeet) &&
+      Number.isInteger(parsedInches) &&
+      parsedFeet >= 3 &&
+      parsedFeet <= 7 &&
+      parsedInches >= 0 &&
+      parsedInches <= 11
+    );
+  };
+
+  const heightInInches = (feet: string, inches: string) =>
+    Number(feet) * 12 + Number(inches);
+
+  const togglePreferredBuild = (option: string) => {
+    setPreferredBuilds((current) =>
+      current.includes(option)
+        ? current.filter((build) => build !== option)
+        : [...current, option],
+    );
+  };
 
   const isValid =
     gender !== "" &&
     age !== "" &&
-    heightFeet !== "" &&
-    heightInches !== "" &&
-    build !== "";
+    parseInt(age, 10) >= 18 &&
+    isHeightValid(heightFeet, heightInches) &&
+    build !== "" &&
+    skinTone !== "" &&
+    minAge !== "" &&
+    maxAge !== "" &&
+    parseInt(minAge, 10) >= 18 &&
+    parseInt(maxAge, 10) >= 18 &&
+    parseInt(minAge, 10) <= parseInt(maxAge, 10) &&
+    isHeightValid(minHeightFeet, minHeightInches) &&
+    isHeightValid(maxHeightFeet, maxHeightInches) &&
+    heightInInches(minHeightFeet, minHeightInches) <=
+      heightInInches(maxHeightFeet, maxHeightInches) &&
+    preferredBuilds.length > 0;
 
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault();
@@ -261,6 +344,18 @@ export default function Step1() {
       inches: parseInt(heightInches, 10),
     });
     setAnswer("build", build);
+    setAnswer("skin_tone", skinTone);
+    setAnswer("preferred_min_age", parseInt(minAge, 10));
+    setAnswer("preferred_max_age", parseInt(maxAge, 10));
+    setAnswer("preferred_min_height", {
+      feet: parseInt(minHeightFeet, 10),
+      inches: parseInt(minHeightInches, 10),
+    });
+    setAnswer("preferred_max_height", {
+      feet: parseInt(maxHeightFeet, 10),
+      inches: parseInt(maxHeightInches, 10),
+    });
+    setAnswer("preferred_builds", preferredBuilds);
 
     router.push("/matchmaking/Step2");
   };
@@ -282,7 +377,7 @@ export default function Step1() {
           </button>
           <div className="text-xs font-sans font-semibold text-white/50 tracking-[0.2em] uppercase bg-[#0c1220] px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
             {isUpdating && <Pencil className="w-3 h-3" />}
-            {isUpdating ? "Editing Profile" : "Step 1 of 5"}
+            {isUpdating ? "Editing Profile" : "Step 1 of 2"}
           </div>
           <div className="w-10 h-10" />
         </header>
@@ -298,10 +393,10 @@ export default function Step1() {
 
             <div className="text-center mb-8">
               <h1 className="text-3xl font-serif tracking-tight mb-2 mt-2">
-                The <span className="italic font-light">Fundamentals</span>
+                You & <span className="italic font-light">Your Match</span>
               </h1>
               <p className="text-white/50 text-sm font-light">
-                Let's create the basic skeleton of your dating profile.
+                Tell us about yourself and who you would like to meet.
               </p>
             </div>
 
@@ -378,6 +473,128 @@ export default function Step1() {
                       <span>{opt}</span>
                     </button>
                   ))}
+                </div>
+              </div>
+
+              <SelectionGroup
+                label="Skin tone"
+                options={["Fair", "Tan", "Brown", "Dark"]}
+                selected={skinTone}
+                onSelect={setSkinTone}
+              />
+
+              <div className="border-t border-white/10 pt-8 flex flex-col gap-8">
+                <div>
+                  <h2 className="font-serif text-xl">Your preferences</h2>
+                  <p className="text-sm text-white/50 mt-1">
+                    Help us understand your ideal match.
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <label className="text-xs uppercase tracking-widest text-white/40 font-medium ml-1">
+                    Preferred age range
+                  </label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <input
+                      type="number"
+                      min="18"
+                      max="99"
+                      placeholder="Min age"
+                      value={minAge}
+                      onChange={(e) => setMinAge(e.target.value)}
+                      className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-4 py-3 text-white text-center outline-none focus:border-white/30"
+                    />
+                    <input
+                      type="number"
+                      min="18"
+                      max="99"
+                      placeholder="Max age"
+                      value={maxAge}
+                      onChange={(e) => setMaxAge(e.target.value)}
+                      className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-4 py-3 text-white text-center outline-none focus:border-white/30"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <label className="text-xs uppercase tracking-widest text-white/40 font-medium ml-1">
+                    Preferred body type
+                  </label>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {buildOptions.map((opt) => {
+                      const isSelected = preferredBuilds.includes(opt);
+                      return (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => togglePreferredBuild(opt)}
+                          className={`flex flex-col items-center justify-center gap-1.5 px-2 py-3 rounded-xl text-xs font-sans transition-all duration-200 border cursor-pointer outline-none ${
+                            isSelected
+                              ? "bg-white text-black border-white"
+                              : "bg-transparent text-white/60 border-white/10 hover:border-white/30 hover:bg-white/[0.02]"
+                          }`}
+                        >
+                          {bodyTypeIcons[opt]}
+                          <span>{opt}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <label className="text-xs uppercase tracking-widest text-white/40 font-medium ml-1">
+                    Preferred height range (ft / in)
+                  </label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[10px] text-white/30 ml-1">Min</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="number"
+                          min="3"
+                          max="7"
+                          placeholder="ft"
+                          value={minHeightFeet}
+                          onChange={(e) => setMinHeightFeet(e.target.value)}
+                          className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-3 py-3 text-white text-center text-sm outline-none focus:border-white/30"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          max="11"
+                          placeholder="in"
+                          value={minHeightInches}
+                          onChange={(e) => setMinHeightInches(e.target.value)}
+                          className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-3 py-3 text-white text-center text-sm outline-none focus:border-white/30"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[10px] text-white/30 ml-1">Max</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="number"
+                          min="3"
+                          max="7"
+                          placeholder="ft"
+                          value={maxHeightFeet}
+                          onChange={(e) => setMaxHeightFeet(e.target.value)}
+                          className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-3 py-3 text-white text-center text-sm outline-none focus:border-white/30"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          max="11"
+                          placeholder="in"
+                          value={maxHeightInches}
+                          onChange={(e) => setMaxHeightInches(e.target.value)}
+                          className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-3 py-3 text-white text-center text-sm outline-none focus:border-white/30"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 

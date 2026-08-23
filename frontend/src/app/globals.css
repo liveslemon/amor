@@ -85,3 +85,64 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--primary);
   color: var(--background);
 }
+
+.legal-copy {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1rem;
+  line-height: 1.8;
+}
+
+.legal-copy h2 {
+  margin-top: 3rem;
+  margin-bottom: 0.9rem;
+  color: white;
+  font-size: 1.7rem;
+  line-height: 1.15;
+}
+
+.legal-copy p + p {
+  margin-top: 1rem;
+}
+
+.legal-copy ul,
+.legal-copy ol {
+  margin-top: 1rem;
+  padding-left: 1.5rem;
+}
+
+.legal-copy ul {
+  list-style: disc;
+}
+
+.legal-copy ol {
+  list-style: decimal;
+}
+
+.legal-copy li + li {
+  margin-top: 0.55rem;
+}
+
+.legal-copy a:not(.legal-action) {
+  color: #ffb6c1;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 182, 193, 0.45);
+  text-underline-offset: 3px;
+}
+
+.legal-copy a:not(.legal-action):hover {
+  color: white;
+}
+
+.legal-copy .legal-action {
+  color: #000B1A;
+  text-decoration: none;
+}
+
+.legal-copy .legal-action:hover {
+  color: white;
+}
+
+.legal-copy strong {
+  color: white;
+  font-weight: 600;
+}
