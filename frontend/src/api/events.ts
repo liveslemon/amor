@@ -81,9 +81,13 @@ export const registerForEvent = async (data: EventRegistrationPayload) => {
   // 2. Also notify the backend REST API
   try {
     const res = await API.post("/events/register", {
-      ...data,
-      event_id: eventId,
-      user_id: userId,
+      userId: userId,
+      eventId: eventId,
+      eventName: data.event_name,
+      eventPicture: data.user?.id ? undefined : "/assets/wet-wars.jpeg", // You can pass actual image here if available in payload
+      eventDay: "2026-08-28", // Map this to your actual event date if available
+      attendeeNotes: data.attendee_notes,
+      source: data.source,
     });
     backendResult = res.data;
   } catch (apiErr) {
@@ -92,8 +96,8 @@ export const registerForEvent = async (data: EventRegistrationPayload) => {
   }
 
   return (
-    supabaseResult ||
-    backendResult || {
+    backendResult ||
+    supabaseResult || {
       success: true,
       event_id: eventId,
       user_id: userId,
