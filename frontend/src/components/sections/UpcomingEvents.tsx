@@ -37,7 +37,7 @@ export default function UpcomingEvents() {
             <h2 className="text-2xl sm:text-3xl md:text-5xl font-serif tracking-tight drop-shadow-md leading-tight">
               Events{" "}
               <span className="text-[#ff5fb8] font-[family-name:var(--font-marker)] font-normal tracking-wide inline-block -rotate-2 ml-1">
-                by Mingle
+                by Minglee
               </span>
             </h2>
           </motion.div>
