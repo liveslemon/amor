@@ -296,7 +296,7 @@ export default function EventDetailsPage({ event }: Props) {
               <div className="flex items-center justify-between pb-4 border-b border-white/10">
                 <div className="flex items-center gap-2 text-white/70 text-xs uppercase tracking-[0.25em]">
                   <Users className="w-4 h-4 text-[#ff5fb8]" />
-                  <span>Mingle Guestlist</span>
+                  <span>Minglee Guestlist</span>
                 </div>
                 <span className="text-xs text-white/50">RSVP Attendance</span>
               </div>
@@ -317,7 +317,7 @@ export default function EventDetailsPage({ event }: Props) {
 
               <p className="mt-4 text-xs sm:text-sm text-white/65 leading-relaxed">
                 Let us know you're going! We record your attendance on the
-                Mingle guestlist so you can connect with members attending this
+                Minglee guestlist so you can connect with members attending this
                 event.
               </p>
 
@@ -389,13 +389,13 @@ export default function EventDetailsPage({ event }: Props) {
                     onClick={() => setMode("login")}
                     className="w-full min-h-[48px] rounded-full bg-white px-5 py-3 text-xs sm:text-sm font-semibold text-[#08101e] hover:bg-white/90 active:scale-[0.98] transition-all cursor-pointer"
                   >
-                    Already a Mingle member? Log in & RSVP
+                    Already a Minglee member? Log in & RSVP
                   </button>
                   <button
                     onClick={() => setMode("signup")}
                     className="w-full min-h-[48px] rounded-full border border-white/15 bg-white/5 px-5 py-3 text-xs sm:text-sm font-semibold text-white hover:bg-white/10 active:scale-[0.98] transition-all cursor-pointer"
                   >
-                    Sign up & RSVP with Mingle
+                    Sign up & RSVP with Minglee
                   </button>
                 </div>
               ) : (
@@ -645,7 +645,7 @@ function NotesField({
         Special Requests or Notes (Optional)
       </label>
       <textarea
-        placeholder="Any notes for the Mingle event team..."
+        placeholder="Any notes for the Minglee event team..."
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="min-h-[80px] w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-3 outline-none focus:border-white/30 resize-none text-base sm:text-sm text-white transition-colors"
@@ -670,7 +670,7 @@ function Consent({
         className="mt-0.5 w-4 h-4 rounded border-white/20 text-[#ff5fb8] focus:ring-0 focus:ring-offset-0 bg-transparent shrink-0 cursor-pointer"
       />
       <span className="leading-snug">
-        I understand gate/entry fee is paid at the venue, and I want Mingle to
+        I understand gate/entry fee is paid at the venue, and I want Minglee to
         record that I'm attending this event.
       </span>
     </label>
