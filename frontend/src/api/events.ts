@@ -80,28 +80,28 @@ export const registerForEvent = async (data: EventRegistrationPayload) => {
 
   // 2. Also notify the backend REST API
   try {
-    const res = await API.post("/events/register", {
-      userId: userId,
-      eventId: eventId,
-      eventName: data.event_name,
-      eventPicture: data.user?.id ? undefined : "/assets/wet-wars.jpeg", // You can pass actual image here if available in payload
-      eventDay: "2026-08-28", // Map this to your actual event date if available
-      attendeeNotes: data.attendee_notes,
-      source: data.source,
-    });
+    const backendPayload = {
+      event_id: eventId,
+    };
+    
+    console.log("SENDING PAYLOAD TO BACKEND:", backendPayload);
+
+    const res = await API.post("/events/register", backendPayload);
     backendResult = res.data;
-  } catch (apiErr) {
-    // Graceful fallback if backend router relies entirely on Supabase direct tables
-    console.warn("Backend /events/register endpoint note:", apiErr);
+  } catch (apiErr: any) {
+    console.warn("Backend /events/register endpoint note:", apiErr.response?.data || apiErr.message);
+    if (!supabaseResult) {
+      throw apiErr;
+    }
+  }
+
+  if (!supabaseResult && !backendResult) {
+    throw new Error("Unable to register attendance. Please try again.");
   }
 
   return (
     backendResult ||
-    supabaseResult || {
-      success: true,
-      event_id: eventId,
-      user_id: userId,
-    }
+    supabaseResult
   );
 };
 

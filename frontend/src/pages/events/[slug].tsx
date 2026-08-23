@@ -17,7 +17,12 @@ import {
 import { APP_CONFIG } from "@/config/app";
 import { login, signup } from "@/api/auth";
 import { getMe } from "@/api/profile";
-import { checkIsUserAttending, registerForEvent, fetchEvents, getEventBySlug } from "@/api/events";
+import {
+  checkIsUserAttending,
+  registerForEvent,
+  fetchEvents,
+  getEventBySlug,
+} from "@/api/events";
 import { useAuthStore } from "@/store/useAuthStore";
 
 type Event = {
@@ -75,31 +80,27 @@ export default function EventDetailsPage({ event }: Props) {
     user: any,
     source: "login" | "signup" | "authenticated_user",
   ) => {
-    try {
-      await registerForEvent({
-        event_id: event.id,
-        user_id: user?.id,
-        event_slug: event.slug,
-        event_name: event.title,
-        status: "attending",
-        attendance_status: "going",
-        is_attending: true,
-        ticket_purchased: false,
-        type: "rsvp_attendance",
-        user: {
-          id: user?.id,
-          name: user?.name,
-          whatsapp_number: user?.whatsapp_number,
-          onboarding_completed: user?.onboarding_completed,
-        },
-        source,
-        attendee_notes: notes || undefined,
-        agreed_to_terms: agreedToTerms,
-        registered_at: new Date().toISOString(),
-      });
-    } catch (err) {
-      console.warn("Event attendance registration recorded:", err);
-    }
+    await registerForEvent({
+      event_id: event.id,
+      user_id: user?.id,
+      event_slug: event.slug,
+      event_name: event.title,
+      status: "attending",
+      attendance_status: "going",
+      is_attending: true,
+      ticket_purchased: false,
+      type: "rsvp_attendance",
+      user: {
+        id: user?.id,
+        name: user?.name,
+        whatsapp_number: user?.whatsapp_number,
+        onboarding_completed: user?.onboarding_completed,
+      },
+      source,
+      attendee_notes: notes || undefined,
+      agreed_to_terms: agreedToTerms,
+      registered_at: new Date().toISOString(),
+    });
 
     // Save locally to persist attendance state
     if (typeof window !== "undefined") {
@@ -133,8 +134,9 @@ export default function EventDetailsPage({ event }: Props) {
     setSuccess("");
 
     try {
-      const me = await getMe().catch(() => currentUser);
-      await submitRegistration(me, "authenticated_user");
+      const meData = await getMe().catch(() => null);
+      const userObj = meData?.user || currentUser;
+      await submitRegistration(userObj, "authenticated_user");
     } catch (err: any) {
       setError(
         err.response?.data?.message ||
@@ -154,15 +156,20 @@ export default function EventDetailsPage({ event }: Props) {
     setSuccess("");
 
     try {
+      const formattedNum = loginForm.whatsapp_number.startsWith('0') 
+        ? loginForm.whatsapp_number.substring(1) 
+        : loginForm.whatsapp_number;
+
       const res = await login({
-        whatsapp_number: `+234${loginForm.whatsapp_number}`,
+        whatsapp_number: `+234${formattedNum}`,
         password: loginForm.password,
       });
 
       if (res.access_token && res.user) {
         setAuth(res.access_token, res.user);
-        const me = await getMe().catch(() => res.user);
-        await submitRegistration(me, "login");
+        const meData = await getMe().catch(() => null);
+        const userObj = meData?.user || res.user;
+        await submitRegistration(userObj, "login");
 
         if (!res.user.onboarding_completed) {
           if (typeof window !== "undefined") {
@@ -190,16 +197,20 @@ export default function EventDetailsPage({ event }: Props) {
     setSuccess("");
 
     try {
+      const formattedNum = signupForm.whatsapp_number.startsWith('0') 
+        ? signupForm.whatsapp_number.substring(1) 
+        : signupForm.whatsapp_number;
+
       const res = await signup({
         name: signupForm.name,
-        whatsapp_number: `+234${signupForm.whatsapp_number}`,
+        whatsapp_number: `+234${formattedNum}`,
         password: signupForm.password,
       });
 
       if (res.access_token && res.user) {
         setAuth(res.access_token, res.user);
         await submitRegistration(res.user, "signup");
-        
+
         if (typeof window !== "undefined") {
           sessionStorage.setItem("returnToEvent", router.asPath);
         }
@@ -319,11 +330,11 @@ export default function EventDetailsPage({ event }: Props) {
                         You're on the list!
                       </p>
                       <p className="text-xs mt-1 text-emerald-200/90 leading-relaxed">
-                        We've recorded in the database that you're going to{" "}
+                        We've recorded that you're going to{" "}
                         <span className="font-semibold text-white">
                           {event.title}
                         </span>
-                        . Gate/entry fees are settled directly at the venue.
+                        . Tickets can be bought online.
                       </p>
                     </div>
                   </div>
