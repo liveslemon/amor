@@ -81,13 +81,7 @@ export const registerForEvent = async (data: EventRegistrationPayload) => {
   // 2. Also notify the backend REST API
   try {
     const backendPayload = {
-      userId: userId,
-      eventId: eventId,
-      eventName: data.event_name,
-      eventPicture: data.user?.id ? undefined : "/assets/wet-wars.jpeg", 
-      eventDay: "2026-08-28", 
-      attendeeNotes: data.attendee_notes,
-      source: data.source,
+      event_id: eventId,
     };
     
     console.log("SENDING PAYLOAD TO BACKEND:", backendPayload);
