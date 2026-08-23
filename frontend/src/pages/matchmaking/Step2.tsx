@@ -15,25 +15,25 @@ const SelectionGroup = ({
   label: string;
   options: string[];
   selected: string;
-  onSelect: (val: string) => void;
+  onSelect: (value: string) => void;
 }) => (
   <div className="flex flex-col gap-3">
     <label className="text-xs uppercase tracking-widest text-white/40 font-medium ml-1">
       {label}
     </label>
     <div className="flex flex-wrap gap-2">
-      {options.map((opt) => (
+      {options.map((option) => (
         <button
-          key={opt}
+          key={option}
           type="button"
-          onClick={() => onSelect(opt)}
+          onClick={() => onSelect(option)}
           className={`px-4 py-2.5 rounded-full text-sm font-sans transition-all duration-200 border cursor-pointer outline-none ${
-            selected === opt
+            selected === option
               ? "bg-white text-black border-white"
               : "bg-transparent text-white/60 border-white/10 hover:border-white/30 hover:bg-white/[0.02]"
           }`}
         >
-          {opt}
+          {option}
         </button>
       ))}
     </div>
@@ -43,42 +43,37 @@ const SelectionGroup = ({
 export default function Step2() {
   const router = useRouter();
   const { answers, setAnswer, isUpdating } = useMatchStore();
-
-  const [skin_tone, setSkinTone] = useState(
-    (answers.skin_tone as string) || "",
+  const [relationshipGoal, setRelationshipGoal] = useState(
+    (answers.relationship_goal as string) || "",
   );
-  const [personal_style, setPersonalStyle] = useState(
-    (answers.personal_style as string) || "",
+  const [conflictStyle, setConflictStyle] = useState(
+    (answers.conflict_style as string) || "",
   );
-  const [social_persona, setSocialPersona] = useState(
-    (answers.social_persona as string) || "",
+  const [instagram, setInstagram] = useState(
+    (answers.instagram as string) || "",
   );
-  const [weekend_type, setWeekendType] = useState(
-    (answers.weekend_type as string) || "",
-  );
+  const [tiktok, setTiktok] = useState((answers.tiktok as string) || "");
 
   const isValid =
-    skin_tone !== "" &&
-    personal_style !== "" &&
-    social_persona !== "" &&
-    weekend_type !== "";
+    relationshipGoal !== "" &&
+    conflictStyle !== "" &&
+    (instagram.trim() !== "" || tiktok.trim() !== "");
 
-  const handleNext = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleComplete = (event: React.FormEvent) => {
+    event.preventDefault();
     if (!isValid) return;
 
-    setAnswer("skin_tone", skin_tone);
-    setAnswer("personal_style", personal_style);
-    setAnswer("social_persona", social_persona);
-    setAnswer("weekend_type", weekend_type);
-
-    router.push("/matchmaking/Step3");
+    setAnswer("relationship_goal", relationshipGoal);
+    setAnswer("conflict_style", conflictStyle);
+    setAnswer("instagram", instagram.trim());
+    setAnswer("tiktok", tiktok.trim());
+    router.push("/matchmaking/Completion");
   };
 
   return (
     <>
       <Head>
-        <title>{`Vibes | ${APP_CONFIG.name}`}</title>
+        <title>{`Relationship Goals | ${APP_CONFIG.name}`}</title>
       </Head>
       <div className="min-h-[100dvh] bg-[#0a0f1a] text-white flex flex-col relative overflow-x-hidden">
         <div className="fixed inset-0 bg-[url('https://images.unsplash.com/photo-1508849789987-4e5333c12b78?auto=format&fit=crop&q=80&w=1200')] bg-cover bg-center opacity-[0.03] pointer-events-none" />
@@ -92,7 +87,7 @@ export default function Step2() {
           </button>
           <div className="text-xs font-sans font-semibold text-white/50 tracking-[0.2em] uppercase bg-[#0c1220] px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
             {isUpdating && <Pencil className="w-3 h-3" />}
-            {isUpdating ? "Editing Profile" : "Step 2 of 5"}
+            {isUpdating ? "Editing Profile" : "Step 2 of 2"}
           </div>
           <div className="w-10 h-10" />
         </header>
@@ -108,44 +103,78 @@ export default function Step2() {
 
             <div className="text-center mb-8">
               <h1 className="text-3xl font-serif tracking-tight mb-2 mt-2">
-                Aesthetics & <span className="italic font-light">Vibes</span>
+                Your <span className="italic font-light">Intentions</span>
               </h1>
               <p className="text-white/50 text-sm font-light">
-                Paint a mental picture of who you are.
+                A few final details for a more thoughtful match.
               </p>
             </div>
 
-            <div className="flex flex-col gap-8">
+            <form onSubmit={handleComplete} className="flex flex-col gap-8">
               <SelectionGroup
-                label="Skin Tone"
-                options={["Fair", "Tan", "Brown", "Dark"]}
-                selected={skin_tone}
-                onSelect={setSkinTone}
+                label="Relationship goal"
+                options={[
+                  "Marriage bound",
+                  "Long-term",
+                  "Short-term",
+                  "Just looking for fun",
+                ]}
+                selected={relationshipGoal}
+                onSelect={setRelationshipGoal}
               />
 
               <SelectionGroup
-                label="Personal Style"
-                options={["Streetwear", "Minimalist", "Casual", "Dressed Up"]}
-                selected={personal_style}
-                onSelect={setPersonalStyle}
+                label="Conflict style"
+                options={[
+                  "Talk it out immediately",
+                  "Need space then talk",
+                  "Let it blow over",
+                ]}
+                selected={conflictStyle}
+                onSelect={setConflictStyle}
               />
 
-              <SelectionGroup
-                label="Social Persona"
-                options={["Introverted", "Ambiverted", "Extroverted"]}
-                selected={social_persona}
-                onSelect={setSocialPersona}
-              />
+              <div className="flex flex-col gap-4">
+                <div>
+                  <label className="text-xs uppercase tracking-widest text-white/40 font-medium ml-1">
+                    Instagram or TikTok
+                  </label>
+                  <p className="text-xs text-white/30 mt-1 ml-1">
+                    Add at least one handle.
+                  </p>
+                </div>
 
-              <SelectionGroup
-                label="Ideal Weekend"
-                options={["Chill in", "Out at the Bar", "Exploring new spots"]}
-                selected={weekend_type}
-                onSelect={setWeekendType}
-              />
+                <div className="relative">
+                  <span className="absolute left-5 top-1/2 -translate-y-1/2 text-white/30">
+                    @
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Instagram handle"
+                    maxLength={120}
+                    value={instagram}
+                    onChange={(event) => setInstagram(event.target.value)}
+                    className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl pl-10 pr-5 py-4 text-white text-base outline-none focus:border-white/30 transition-colors placeholder:text-white/20"
+                  />
+                </div>
+
+                <div className="relative">
+                  <span className="absolute left-5 top-1/2 -translate-y-1/2 text-white/30">
+                    @
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="TikTok handle"
+                    maxLength={120}
+                    value={tiktok}
+                    onChange={(event) => setTiktok(event.target.value)}
+                    className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl pl-10 pr-5 py-4 text-white text-base outline-none focus:border-white/30 transition-colors placeholder:text-white/20"
+                  />
+                </div>
+              </div>
 
               <button
-                onClick={handleNext}
+                type="submit"
                 disabled={!isValid}
                 className={`mt-4 w-full h-14 rounded-xl flex items-center justify-center gap-3 font-sans font-semibold transition-colors outline-none border-none cursor-pointer ${
                   isValid
@@ -153,12 +182,12 @@ export default function Step2() {
                     : "bg-white/5 text-white/30 cursor-not-allowed border border-white/10"
                 }`}
               >
-                <span>{isUpdating ? "Save & Continue" : "Continue"}</span>
+                <span>{isUpdating ? "Update Profile" : "Complete Profile"}</span>
                 <ArrowRight
                   className={`w-4 h-4 ${isValid ? "opacity-100" : "opacity-30"}`}
                 />
               </button>
-            </div>
+            </form>
           </motion.div>
         </main>
       </div>

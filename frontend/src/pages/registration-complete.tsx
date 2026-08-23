@@ -6,6 +6,23 @@ import Link from "next/link";
 import { APP_CONFIG } from "@/config/app";
 
 export default function RegistrationComplete() {
+  const [returnUrl, setReturnUrl] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = sessionStorage.getItem("returnToEvent");
+      if (stored) {
+        setReturnUrl(stored);
+      }
+    }
+  }, []);
+
+  const handleReturnToEvent = () => {
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("returnToEvent");
+    }
+  };
+
   const handleShare = async () => {
     if (navigator.share) {
       try {
@@ -88,11 +105,12 @@ export default function RegistrationComplete() {
 
             <div className="flex flex-col gap-4 w-full max-w-sm">
               <Link
-                href="/"
+                href={returnUrl || "/"}
+                onClick={returnUrl ? handleReturnToEvent : undefined}
                 className="w-full h-14 rounded-xl flex items-center justify-center gap-3 font-sans font-semibold transition-colors cursor-pointer border-none bg-white text-[#0a0f1a] hover:bg-white/90"
               >
                 <Home className="w-4 h-4" />
-                <span>Back to Home</span>
+                <span>{returnUrl ? "Return to Event" : "Back to Home"}</span>
               </Link>
               <a
                 href={whatsappLink}

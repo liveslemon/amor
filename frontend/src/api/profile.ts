@@ -30,7 +30,7 @@ export const completeOnboarding = async (data: {
   preferences?: any;
   focuses?: string[];
   preferred_builds?: string[];
-  photos: any[];
+  photos?: any[];
 }) => {
   const res = await API.post("/complete-onboarding", data);
   return res.data;
