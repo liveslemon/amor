@@ -197,7 +197,11 @@ export default function SignUp() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Gender</label>
-                      <input required type="text" placeholder="e.g. Female" value={formData.gender} onChange={(e) => setFormData({ ...formData, gender: e.target.value })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-4 py-3 text-white text-base outline-none focus:border-white/30 transition-colors" />
+                      <select required value={formData.gender} onChange={(e) => setFormData({ ...formData, gender: e.target.value })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-4 py-3 text-white text-base outline-none focus:border-white/30 transition-colors appearance-none">
+                        <option value="" disabled>Select gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                      </select>
                     </div>
                     <div>
                       <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Age</label>
@@ -221,7 +225,16 @@ export default function SignUp() {
                     </div>
                     <div>
                       <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Skin Tone</label>
-                      <input required type="text" placeholder="e.g. Brown" value={formData.skin_tone} onChange={(e) => setFormData({ ...formData, skin_tone: e.target.value })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-4 py-3 text-white text-base outline-none focus:border-white/30 transition-colors" />
+                      <select required value={formData.skin_tone} onChange={(e) => setFormData({ ...formData, skin_tone: e.target.value })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-4 py-3 text-white text-base outline-none focus:border-white/30 transition-colors appearance-none">
+                        <option value="" disabled>Select tone</option>
+                        <option value="Light">Light</option>
+                        <option value="Fair">Fair</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Olive">Olive</option>
+                        <option value="Brown">Brown</option>
+                        <option value="Dark Brown">Dark Brown</option>
+                        <option value="Dark">Dark</option>
+                      </select>
                     </div>
                   </div>
 
