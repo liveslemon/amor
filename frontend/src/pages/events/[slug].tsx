@@ -68,12 +68,15 @@ export default function EventDetailsPage({ event }: Props) {
     age: "",
     build: "",
     skin_tone: "",
-    height: "",
+    height_ft: "",
+    height_in: "",
     preferred_min_age: "",
     preferred_max_age: "",
     preferred_builds: [] as string[],
-    preferred_min_height: "",
-    preferred_max_height: "",
+    preferred_min_height_ft: "",
+    preferred_min_height_in: "",
+    preferred_max_height_ft: "",
+    preferred_max_height_in: "",
     relationship_goal: "",
     conflict_style: "",
     instagram: "",
@@ -230,13 +233,20 @@ export default function EventDetailsPage({ event }: Props) {
         setAuth(res.access_token, res.user);
 
         try {
+          const computeInches = (ftStr: string, inStr: string) => {
+            if (!ftStr && !inStr) return undefined;
+            const ft = ftStr ? parseInt(ftStr, 10) : 0;
+            const ins = inStr ? parseInt(inStr, 10) : 0;
+            return (ft * 12) + ins;
+          };
+
           await completeOnboarding({
             profile: {
               gender: signupForm.gender || undefined,
               age: signupForm.age ? parseInt(signupForm.age, 10) : undefined,
               build: signupForm.build || undefined,
               skin_tone: signupForm.skin_tone || undefined,
-              height: signupForm.height ? parseInt(signupForm.height, 10) : undefined,
+              height: computeInches(signupForm.height_ft, signupForm.height_in),
               relationship_goal: signupForm.relationship_goal || undefined,
               conflict_style: signupForm.conflict_style || undefined,
               instagram: signupForm.instagram || undefined,
@@ -245,8 +255,8 @@ export default function EventDetailsPage({ event }: Props) {
             preferences: {
               preferred_min_age: signupForm.preferred_min_age ? parseInt(signupForm.preferred_min_age, 10) : undefined,
               preferred_max_age: signupForm.preferred_max_age ? parseInt(signupForm.preferred_max_age, 10) : undefined,
-              preferred_min_height: signupForm.preferred_min_height ? parseInt(signupForm.preferred_min_height, 10) : undefined,
-              preferred_max_height: signupForm.preferred_max_height ? parseInt(signupForm.preferred_max_height, 10) : undefined,
+              preferred_min_height: computeInches(signupForm.preferred_min_height_ft, signupForm.preferred_min_height_in),
+              preferred_max_height: computeInches(signupForm.preferred_max_height_ft, signupForm.preferred_max_height_in),
             },
             preferred_builds: signupForm.preferred_builds.length > 0 ? signupForm.preferred_builds : undefined,
           });
@@ -578,8 +588,17 @@ export default function EventDetailsPage({ event }: Props) {
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                              <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Height (inches)</label>
-                              <input required type="number" min="36" max="96" placeholder="e.g. 70" value={signupForm.height} onChange={(e) => setSignupForm({ ...signupForm, height: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-4 py-3 outline-none focus:border-white/30 text-white transition-colors" />
+                              <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Height</label>
+                              <div className="flex gap-2 w-full">
+                                <div className="relative flex-1">
+                                  <input required type="number" min="3" max="8" placeholder="Ft" value={signupForm.height_ft} onChange={(e) => setSignupForm({ ...signupForm, height_ft: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 pl-3 pr-6 py-3 outline-none focus:border-white/30 text-white transition-colors" />
+                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white/40">ft</span>
+                                </div>
+                                <div className="relative flex-1">
+                                  <input required type="number" min="0" max="11" placeholder="In" value={signupForm.height_in} onChange={(e) => setSignupForm({ ...signupForm, height_in: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 pl-3 pr-6 py-3 outline-none focus:border-white/30 text-white transition-colors" />
+                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white/40">in</span>
+                                </div>
+                              </div>
                             </div>
                             <div>
                               <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Pref Age Range</label>
@@ -600,10 +619,17 @@ export default function EventDetailsPage({ event }: Props) {
                               </div>
                             </div>
                             <div>
-                              <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Pref Height (inches)</label>
-                              <div className="flex gap-2 w-full">
-                                <input required type="number" min="36" max="96" placeholder="Min" value={signupForm.preferred_min_height} onChange={(e) => setSignupForm({ ...signupForm, preferred_min_height: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-3 py-3 outline-none focus:border-white/30 text-white transition-colors" />
-                                <input required type="number" min="36" max="96" placeholder="Max" value={signupForm.preferred_max_height} onChange={(e) => setSignupForm({ ...signupForm, preferred_max_height: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-3 py-3 outline-none focus:border-white/30 text-white transition-colors" />
+                              <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Pref Height</label>
+                              <div className="flex gap-2 w-full items-center">
+                                <div className="flex-1 flex gap-1">
+                                  <input required type="number" min="3" max="8" placeholder="Ft" value={signupForm.preferred_min_height_ft} onChange={(e) => setSignupForm({ ...signupForm, preferred_min_height_ft: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-2 py-3 outline-none focus:border-white/30 text-white transition-colors text-center" />
+                                  <input required type="number" min="0" max="11" placeholder="In" value={signupForm.preferred_min_height_in} onChange={(e) => setSignupForm({ ...signupForm, preferred_min_height_in: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-2 py-3 outline-none focus:border-white/30 text-white transition-colors text-center" />
+                                </div>
+                                <span className="text-white/30 text-xs">-</span>
+                                <div className="flex-1 flex gap-1">
+                                  <input required type="number" min="3" max="8" placeholder="Ft" value={signupForm.preferred_max_height_ft} onChange={(e) => setSignupForm({ ...signupForm, preferred_max_height_ft: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-2 py-3 outline-none focus:border-white/30 text-white transition-colors text-center" />
+                                  <input required type="number" min="0" max="11" placeholder="In" value={signupForm.preferred_max_height_in} onChange={(e) => setSignupForm({ ...signupForm, preferred_max_height_in: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-2 py-3 outline-none focus:border-white/30 text-white transition-colors text-center" />
+                                </div>
                               </div>
                             </div>
                           </div>
