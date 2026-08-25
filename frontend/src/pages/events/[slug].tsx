@@ -36,6 +36,7 @@ type Event = {
   price: string;
   image: string;
   category: string;
+  ticketUrl?: string;
   [key: string]: any;
 };
 
@@ -136,6 +137,11 @@ export default function EventDetailsPage({ event }: Props) {
       } catch {
         // no-op
       }
+    }
+
+    if (event.ticketUrl) {
+      window.location.href = event.ticketUrl;
+      return;
     }
 
     setSuccess(

@@ -12,6 +12,7 @@
     "price": "From NGN 3500",
     "vibe": "High-Energy • Amapiano • Fun",
     "image": "/assets/wet-wars.jpeg",
+    "ticketUrl": "https://cliqss.com/event/6a6dfb231b9109f34b606234",
     "description": "The after-exam therapy. No water gun, no therapy."
   },
   {
@@ -27,6 +28,7 @@
     "price": "From NGN 4,000",
     "vibe": "Warm • Intimate • Conversational",
     "image": "/assets/rave-district.jpeg",
+    "ticketUrl": "https://tix.africa/ravedistrict",
     "description": "A relaxed brunch experience made for easy chemistry, great photos, and real conversation."
   }
 ]
