@@ -80,12 +80,11 @@ export default function SignUp() {
         setAuth(res.access_token, res.user);
 
         try {
-          const computeCM = (ftStr: string, inStr: string) => {
+          const computeInches = (ftStr: string, inStr: string) => {
             if (!ftStr && !inStr) return undefined;
             const ft = ftStr ? parseInt(ftStr, 10) : 0;
             const ins = inStr ? parseInt(inStr, 10) : 0;
-            const totalInches = (ft * 12) + ins;
-            return Math.round(totalInches * 2.54);
+            return (ft * 12) + ins;
           };
 
           await completeOnboarding({
@@ -94,7 +93,7 @@ export default function SignUp() {
               age: formData.age ? parseInt(formData.age, 10) : undefined,
               build: formData.build || undefined,
               skin_tone: formData.skin_tone || undefined,
-              height: computeCM(formData.height_ft, formData.height_in),
+              height: computeInches(formData.height_ft, formData.height_in),
               relationship_goal: formData.relationship_goal || undefined,
               conflict_style: formData.conflict_style || undefined,
               instagram: formData.instagram || undefined,
@@ -103,8 +102,8 @@ export default function SignUp() {
             preferences: {
               preferred_min_age: formData.preferred_min_age ? parseInt(formData.preferred_min_age, 10) : undefined,
               preferred_max_age: formData.preferred_max_age ? parseInt(formData.preferred_max_age, 10) : undefined,
-              preferred_min_height: computeCM(formData.preferred_min_height_ft, formData.preferred_min_height_in),
-              preferred_max_height: computeCM(formData.preferred_max_height_ft, formData.preferred_max_height_in),
+              preferred_min_height: computeInches(formData.preferred_min_height_ft, formData.preferred_min_height_in),
+              preferred_max_height: computeInches(formData.preferred_max_height_ft, formData.preferred_max_height_in),
             },
             preferred_builds: formData.preferred_builds.length > 0 ? formData.preferred_builds : undefined,
           });
