@@ -1,6 +1,6 @@
 [
   {
-    "slug": "mingle-at-wet-wars",
+    "slug": "minglee-at-wet-wars",
     "id": "123e4567-e89b-12d3-a456-426614174001",
     "category": "Pool party",
     "badge": "Selling Fast",
@@ -12,6 +12,7 @@
     "price": "From NGN 3500",
     "vibe": "High-Energy • Amapiano • Fun",
     "image": "/assets/wet-wars.jpeg",
+    "ticketUrl": "https://tix.africa/wetwars",
     "description": "The after-exam therapy. No water gun, no therapy."
   }
 ]

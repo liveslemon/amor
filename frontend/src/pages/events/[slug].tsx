@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { APP_CONFIG } from "@/config/app";
 import { login, signup } from "@/api/auth";
-import { getMe } from "@/api/profile";
+import { getMe, completeOnboarding } from "@/api/profile";
 import {
   checkIsUserAttending,
   registerForEvent,
@@ -36,6 +36,7 @@ type Event = {
   price: string;
   image: string;
   category: string;
+  ticketUrl?: string;
   [key: string]: any;
 };
 
@@ -59,10 +60,28 @@ export default function EventDetailsPage({ event }: Props) {
     whatsapp_number: "",
     password: "",
   });
+  const [signupStep, setSignupStep] = useState(1);
   const [signupForm, setSignupForm] = useState({
     name: "",
     whatsapp_number: "",
     password: "",
+    gender: "",
+    age: "",
+    build: "",
+    skin_tone: "",
+    height_ft: "",
+    height_in: "",
+    preferred_min_age: "",
+    preferred_max_age: "",
+    preferred_builds: [] as string[],
+    preferred_min_height_ft: "",
+    preferred_min_height_in: "",
+    preferred_max_height_ft: "",
+    preferred_max_height_in: "",
+    relationship_goal: "",
+    conflict_style: "",
+    instagram: "",
+    tiktok: "",
   });
 
   // Check if current user is already attending in the event_attendees DB table
@@ -118,6 +137,11 @@ export default function EventDetailsPage({ event }: Props) {
       } catch {
         // no-op
       }
+    }
+
+    if (event.ticketUrl) {
+      window.location.href = event.ticketUrl;
+      return;
     }
 
     setSuccess(
@@ -192,6 +216,10 @@ export default function EventDetailsPage({ event }: Props) {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (signupStep === 1) {
+      setSignupStep(2);
+      return;
+    }
     setLoading(true);
     setError("");
     setSuccess("");
@@ -209,12 +237,43 @@ export default function EventDetailsPage({ event }: Props) {
 
       if (res.access_token && res.user) {
         setAuth(res.access_token, res.user);
-        await submitRegistration(res.user, "signup");
 
-        if (typeof window !== "undefined") {
-          sessionStorage.setItem("returnToEvent", router.asPath);
+        try {
+          const computeCM = (ftStr: string, inStr: string) => {
+            if (!ftStr && !inStr) return undefined;
+            const ft = ftStr ? parseInt(ftStr, 10) : 0;
+            const ins = inStr ? parseInt(inStr, 10) : 0;
+            const totalInches = (ft * 12) + ins;
+            return Math.round(totalInches * 2.54);
+          };
+
+          await completeOnboarding({
+            profile: {
+              gender: signupForm.gender || undefined,
+              age: signupForm.age ? parseInt(signupForm.age, 10) : undefined,
+              build: signupForm.build || undefined,
+              skin_tone: signupForm.skin_tone || undefined,
+              height: computeCM(signupForm.height_ft, signupForm.height_in),
+              relationship_goal: signupForm.relationship_goal || undefined,
+              conflict_style: signupForm.conflict_style || undefined,
+              instagram: signupForm.instagram || undefined,
+              tiktok: signupForm.tiktok || undefined,
+            },
+            preferences: {
+              preferred_min_age: signupForm.preferred_min_age ? parseInt(signupForm.preferred_min_age, 10) : undefined,
+              preferred_max_age: signupForm.preferred_max_age ? parseInt(signupForm.preferred_max_age, 10) : undefined,
+              preferred_min_height: computeCM(signupForm.preferred_min_height_ft, signupForm.preferred_min_height_in),
+              preferred_max_height: computeCM(signupForm.preferred_max_height_ft, signupForm.preferred_max_height_in),
+            },
+            preferred_builds: signupForm.preferred_builds.length > 0 ? signupForm.preferred_builds : undefined,
+          });
+        } catch (onboardingErr) {
+          console.warn("Onboarding partial failure:", onboardingErr);
         }
-        router.push("/matchmaking/Step1");
+
+        const meData = await getMe().catch(() => null);
+        const userObj = meData?.user || res.user;
+        await submitRegistration(userObj, "signup");
       }
     } catch (err: any) {
       setError(
@@ -296,7 +355,7 @@ export default function EventDetailsPage({ event }: Props) {
               <div className="flex items-center justify-between pb-4 border-b border-white/10">
                 <div className="flex items-center gap-2 text-white/70 text-xs uppercase tracking-[0.25em]">
                   <Users className="w-4 h-4 text-[#ff5fb8]" />
-                  <span>Mingle Guestlist</span>
+                  <span>Minglee Guestlist</span>
                 </div>
                 <span className="text-xs text-white/50">RSVP Attendance</span>
               </div>
@@ -317,7 +376,7 @@ export default function EventDetailsPage({ event }: Props) {
 
               <p className="mt-4 text-xs sm:text-sm text-white/65 leading-relaxed">
                 Let us know you're going! We record your attendance on the
-                Mingle guestlist so you can connect with members attending this
+                Minglee guestlist so you can connect with members attending this
                 event.
               </p>
 
@@ -389,13 +448,13 @@ export default function EventDetailsPage({ event }: Props) {
                     onClick={() => setMode("login")}
                     className="w-full min-h-[48px] rounded-full bg-white px-5 py-3 text-xs sm:text-sm font-semibold text-[#08101e] hover:bg-white/90 active:scale-[0.98] transition-all cursor-pointer"
                   >
-                    Already a Mingle member? Log in & RSVP
+                    Already a Minglee member? Log in & RSVP
                   </button>
                   <button
                     onClick={() => setMode("signup")}
                     className="w-full min-h-[48px] rounded-full border border-white/15 bg-white/5 px-5 py-3 text-xs sm:text-sm font-semibold text-white hover:bg-white/10 active:scale-[0.98] transition-all cursor-pointer"
                   >
-                    Sign up & RSVP with Mingle
+                    Sign up & RSVP with Minglee
                   </button>
                 </div>
               ) : (
@@ -486,96 +545,194 @@ export default function EventDetailsPage({ event }: Props) {
                       </button>
                     </form>
                   ) : (
-                    <form onSubmit={handleSignup} className="grid gap-3">
-                      <div>
-                        <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">
-                          Full Name
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Your full name"
-                          required
-                          value={signupForm.name}
-                          onChange={(e) =>
-                            setSignupForm({
-                              ...signupForm,
-                              name: e.target.value,
-                            })
-                          }
-                          className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-4 py-3 outline-none focus:border-white/30 text-white transition-colors"
-                        />
-                      </div>
+                    <form onSubmit={handleSignup} className="grid gap-4">
+                      {signupStep === 1 && (
+                        <>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Full Name</label>
+                              <input required type="text" placeholder="Your full name" value={signupForm.name} onChange={(e) => setSignupForm({ ...signupForm, name: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-4 py-3 outline-none focus:border-white/30 text-white transition-colors" />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">WhatsApp Number</label>
+                              <div className="flex w-full">
+                                <span className="bg-white/5 border border-white/10 border-r-0 rounded-l-2xl px-3 sm:px-4 text-white text-xs sm:text-sm flex items-center shrink-0">🇳🇬 +234</span>
+                                <input required type="tel" inputMode="numeric" placeholder="8012345678" value={signupForm.whatsapp_number} onChange={(e) => setSignupForm({ ...signupForm, whatsapp_number: e.target.value.replace(/[^0-9]/g, "") })} className="w-full text-base sm:text-sm rounded-r-2xl bg-white/5 border border-white/10 px-4 py-3 outline-none focus:border-white/30 text-white transition-colors" />
+                              </div>
+                            </div>
+                          </div>
 
-                      <div>
-                        <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">
-                          WhatsApp Number
-                        </label>
-                        <div className="flex w-full">
-                          <span className="bg-white/5 border border-white/10 border-r-0 rounded-l-2xl px-3 sm:px-4 text-white text-xs sm:text-sm flex items-center shrink-0">
-                            🇳🇬 +234
-                          </span>
-                          <input
-                            type="tel"
-                            inputMode="numeric"
-                            placeholder="8012345678"
-                            required
-                            value={signupForm.whatsapp_number}
-                            onChange={(e) =>
-                              setSignupForm({
-                                ...signupForm,
-                                whatsapp_number: e.target.value.replace(
-                                  /[^0-9]/g,
-                                  "",
-                                ),
-                              })
-                            }
-                            className="w-full text-base sm:text-sm rounded-r-2xl bg-white/5 border border-white/10 px-4 py-3 outline-none focus:border-white/30 text-white transition-colors"
-                          />
-                        </div>
-                      </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Gender</label>
+                              <select required value={signupForm.gender} onChange={(e) => setSignupForm({ ...signupForm, gender: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-4 py-3 outline-none focus:border-white/30 text-white transition-colors appearance-none">
+                                <option value="" disabled>Select gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Age</label>
+                              <input required type="number" min="18" placeholder="e.g. 23" value={signupForm.age} onChange={(e) => setSignupForm({ ...signupForm, age: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-4 py-3 outline-none focus:border-white/30 text-white transition-colors" />
+                            </div>
+                          </div>
 
-                      <div>
-                        <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">
-                          Password
-                        </label>
-                        <input
-                          type="password"
-                          placeholder="Create a password"
-                          required
-                          value={signupForm.password}
-                          onChange={(e) =>
-                            setSignupForm({
-                              ...signupForm,
-                              password: e.target.value,
-                            })
-                          }
-                          className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-4 py-3 outline-none focus:border-white/30 text-white transition-colors"
-                        />
-                      </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Build</label>
+                              <select required value={signupForm.build} onChange={(e) => setSignupForm({ ...signupForm, build: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-4 py-3 outline-none focus:border-white/30 text-white transition-colors appearance-none">
+                                <option value="" disabled>Select build</option>
+                                <option value="Slim">Slim</option>
+                                <option value="Petite">Petite</option>
+                                <option value="Athletic">Athletic</option>
+                                <option value="Average">Average</option>
+                                <option value="Muscular">Muscular</option>
+                                <option value="Curvy">Curvy</option>
+                                <option value="Plus-size">Plus-size</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Skin Tone</label>
+                              <select required value={signupForm.skin_tone} onChange={(e) => setSignupForm({ ...signupForm, skin_tone: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-4 py-3 outline-none focus:border-white/30 text-white transition-colors appearance-none">
+                                <option value="" disabled>Select tone</option>
+                                <option value="Light">Light</option>
+                                <option value="Fair">Fair</option>
+                                <option value="Medium">Medium</option>
+                                <option value="Olive">Olive</option>
+                                <option value="Brown">Brown</option>
+                                <option value="Dark Brown">Dark Brown</option>
+                                <option value="Dark">Dark</option>
+                              </select>
+                            </div>
+                          </div>
 
-                      <NotesField value={notes} onChange={setNotes} />
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Height</label>
+                              <div className="flex gap-2 w-full">
+                                <div className="relative flex-1">
+                                  <input required type="number" min="3" max="8" placeholder="Ft" value={signupForm.height_ft} onChange={(e) => setSignupForm({ ...signupForm, height_ft: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 pl-3 pr-6 py-3 outline-none focus:border-white/30 text-white transition-colors" />
+                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white/40">ft</span>
+                                </div>
+                                <div className="relative flex-1">
+                                  <input required type="number" min="0" max="11" placeholder="In" value={signupForm.height_in} onChange={(e) => setSignupForm({ ...signupForm, height_in: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 pl-3 pr-6 py-3 outline-none focus:border-white/30 text-white transition-colors" />
+                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white/40">in</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Pref Age Range</label>
+                              <div className="flex gap-2 w-full">
+                                <input required type="number" min="18" placeholder="Min" value={signupForm.preferred_min_age} onChange={(e) => setSignupForm({ ...signupForm, preferred_min_age: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-3 py-3 outline-none focus:border-white/30 text-white transition-colors" />
+                                <input required type="number" min="18" placeholder="Max" value={signupForm.preferred_max_age} onChange={(e) => setSignupForm({ ...signupForm, preferred_max_age: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-3 py-3 outline-none focus:border-white/30 text-white transition-colors" />
+                              </div>
+                            </div>
+                          </div>
 
-                      <Consent
-                        agreedToTerms={agreedToTerms}
-                        setAgreedToTerms={setAgreedToTerms}
-                      />
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Pref Body Type</label>
+                              <div className="flex flex-wrap gap-2 pt-1">
+                                {["Slim", "Petite", "Athletic", "Average", "Muscular", "Curvy", "Plus-size"].map(b => (
+                                  <button key={b} type="button" onClick={() => setSignupForm({ ...signupForm, preferred_builds: signupForm.preferred_builds.includes(b) ? signupForm.preferred_builds.filter(x => x !== b) : [...signupForm.preferred_builds, b] })} className={`text-[11px] px-2 py-1 rounded-full border ${signupForm.preferred_builds.includes(b) ? 'bg-[#ff5fb8]/20 border-[#ff5fb8]/50 text-[#ff5fb8]' : 'bg-white/5 border-white/10 text-white/70'}`}>{b}</button>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Pref Height</label>
+                              <div className="flex gap-2 w-full items-center">
+                                <div className="flex-1 flex gap-1">
+                                  <input required type="number" min="3" max="8" placeholder="Ft" value={signupForm.preferred_min_height_ft} onChange={(e) => setSignupForm({ ...signupForm, preferred_min_height_ft: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-2 py-3 outline-none focus:border-white/30 text-white transition-colors text-center" />
+                                  <input required type="number" min="0" max="11" placeholder="In" value={signupForm.preferred_min_height_in} onChange={(e) => setSignupForm({ ...signupForm, preferred_min_height_in: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-2 py-3 outline-none focus:border-white/30 text-white transition-colors text-center" />
+                                </div>
+                                <span className="text-white/30 text-xs">-</span>
+                                <div className="flex-1 flex gap-1">
+                                  <input required type="number" min="3" max="8" placeholder="Ft" value={signupForm.preferred_max_height_ft} onChange={(e) => setSignupForm({ ...signupForm, preferred_max_height_ft: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-2 py-3 outline-none focus:border-white/30 text-white transition-colors text-center" />
+                                  <input required type="number" min="0" max="11" placeholder="In" value={signupForm.preferred_max_height_in} onChange={(e) => setSignupForm({ ...signupForm, preferred_max_height_in: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-2 py-3 outline-none focus:border-white/30 text-white transition-colors text-center" />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {signupStep === 2 && (
+                        <>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Relationship Goal</label>
+                              <select required value={signupForm.relationship_goal} onChange={(e) => setSignupForm({ ...signupForm, relationship_goal: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-4 py-3 outline-none focus:border-white/30 text-white transition-colors appearance-none">
+                                <option value="" disabled>Select goal</option>
+                                <option value="Marriage bound">Marriage bound</option>
+                                <option value="Long-term">Long-term</option>
+                                <option value="Short-term">Short-term</option>
+                                <option value="Just looking for fun">Just looking for fun</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Conflict Style</label>
+                              <select required value={signupForm.conflict_style} onChange={(e) => setSignupForm({ ...signupForm, conflict_style: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-4 py-3 outline-none focus:border-white/30 text-white transition-colors appearance-none">
+                                <option value="" disabled>Select style</option>
+                                <option value="Talk it out immediately">Talk it out immediately</option>
+                                <option value="Need space then talk">Need space then talk</option>
+                                <option value="Let it blow over">Let it blow over</option>
+                              </select>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Instagram</label>
+                              <input type="text" placeholder="@username" value={signupForm.instagram} onChange={(e) => setSignupForm({ ...signupForm, instagram: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-4 py-3 outline-none focus:border-white/30 text-white transition-colors" />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">TikTok</label>
+                              <input type="text" placeholder="@username" value={signupForm.tiktok} onChange={(e) => setSignupForm({ ...signupForm, tiktok: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-4 py-3 outline-none focus:border-white/30 text-white transition-colors" />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Password</label>
+                            <input required type="password" placeholder="Create a password" value={signupForm.password} onChange={(e) => setSignupForm({ ...signupForm, password: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-4 py-3 outline-none focus:border-white/30 text-white transition-colors" />
+                          </div>
+
+                          <NotesField value={notes} onChange={setNotes} />
+                          <Consent agreedToTerms={agreedToTerms} setAgreedToTerms={setAgreedToTerms} />
+                        </>
+                      )}
 
                       {error && <Alert tone="error" text={error} />}
 
-                      <button
-                        type="submit"
-                        disabled={loading || !agreedToTerms}
-                        className="w-full min-h-[48px] inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-xs sm:text-sm font-semibold text-[#08101e] hover:bg-white/90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer mt-1"
-                      >
-                        {loading ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <>
-                            <span>Sign up & Confirm Attendance</span>
-                            <ArrowRight className="w-4 h-4" />
-                          </>
+                      <div className="flex items-center gap-3 mt-1">
+                        {signupStep === 2 && (
+                          <button
+                            type="button"
+                            onClick={() => setSignupStep(1)}
+                            className="min-w-[100px] min-h-[48px] rounded-full border border-white/15 bg-white/5 px-5 py-3 text-xs sm:text-sm font-semibold text-white hover:bg-white/10 active:scale-[0.98] transition-all cursor-pointer"
+                          >
+                            Back
+                          </button>
                         )}
-                      </button>
+                        <button
+                          type="submit"
+                          disabled={signupStep === 2 && (loading || !agreedToTerms)}
+                          className="flex-1 min-h-[48px] inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-xs sm:text-sm font-semibold text-[#08101e] hover:bg-white/90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        >
+                          {loading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : signupStep === 1 ? (
+                            <>
+                              <span>Next Step</span>
+                              <ArrowRight className="w-4 h-4" />
+                            </>
+                          ) : (
+                            <>
+                              <span>Sign up & Confirm Attendance</span>
+                              <CheckCircle2 className="w-4 h-4 text-[#ff5fb8]" />
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </form>
                   )}
                 </div>
@@ -645,7 +802,7 @@ function NotesField({
         Special Requests or Notes (Optional)
       </label>
       <textarea
-        placeholder="Any notes for the Mingle event team..."
+        placeholder="Any notes for the Minglee event team..."
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="min-h-[80px] w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-3 outline-none focus:border-white/30 resize-none text-base sm:text-sm text-white transition-colors"
@@ -670,7 +827,7 @@ function Consent({
         className="mt-0.5 w-4 h-4 rounded border-white/20 text-[#ff5fb8] focus:ring-0 focus:ring-offset-0 bg-transparent shrink-0 cursor-pointer"
       />
       <span className="leading-snug">
-        I understand gate/entry fee is paid at the venue, and I want Mingle to
+        I understand gate/entry fee is paid at the venue, and I want Minglee to
         record that I'm attending this event.
       </span>
     </label>
