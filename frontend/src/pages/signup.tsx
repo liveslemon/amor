@@ -112,8 +112,8 @@ export default function SignUp() {
           console.warn("Onboarding partial failure:", onboardingErr);
         }
 
-        // Redirect to matchmaking Step1 for photo uploads/focuses since they already provided everything else
-        router.replace("/matchmaking/Step1");
+        // Redirect to registration complete since they already provided everything else
+        router.replace("/registration-complete");
       }
     } catch (err: any) {
       setError(
