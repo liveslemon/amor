@@ -79,8 +79,7 @@ export default function SignUp() {
       if (res.access_token && res.user) {
         setAuth(res.access_token, res.user);
 
-        try {
-          const computeInches = (ftStr: string, inStr: string) => {
+        const computeInches = (ftStr: string, inStr: string) => {
             if (!ftStr && !inStr) return undefined;
             const ft = ftStr ? parseInt(ftStr, 10) : 0;
             const ins = inStr ? parseInt(inStr, 10) : 0;
@@ -107,12 +106,9 @@ export default function SignUp() {
             },
             preferred_builds: formData.preferred_builds.length > 0 ? formData.preferred_builds : undefined,
           });
-        } catch (onboardingErr) {
-          console.warn("Onboarding partial failure:", onboardingErr);
-        }
 
-        // Redirect to registration complete since they already provided everything else
-        router.replace("/registration-complete");
+          // Redirect to registration complete since they already provided everything else
+          router.replace("/registration-complete");
       }
     } catch (err: any) {
       setError(
@@ -227,12 +223,9 @@ export default function SignUp() {
                       <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Skin Tone</label>
                       <select required value={formData.skin_tone} onChange={(e) => setFormData({ ...formData, skin_tone: e.target.value })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-4 py-3 text-white text-base outline-none focus:border-white/30 transition-colors appearance-none">
                         <option value="" disabled>Select tone</option>
-                        <option value="Light">Light</option>
                         <option value="Fair">Fair</option>
-                        <option value="Medium">Medium</option>
-                        <option value="Olive">Olive</option>
+                        <option value="Tan">Tan</option>
                         <option value="Brown">Brown</option>
-                        <option value="Dark Brown">Dark Brown</option>
                         <option value="Dark">Dark</option>
                       </select>
                     </div>
