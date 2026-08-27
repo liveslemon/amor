@@ -2,12 +2,10 @@ import React, { useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { motion } from "framer-motion";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Loader2, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { login } from "@/api/auth";
-import { getMe } from "@/api/profile";
 import { useAuthStore } from "@/store/useAuthStore";
-import { useMatchStore } from "@/store/useMatchStore";
 import { APP_CONFIG } from "@/config/app";
 
 export default function Login() {
@@ -34,28 +32,8 @@ export default function Login() {
       if (res.access_token && res.user) {
         setAuth(res.access_token, res.user);
 
-        // Check if user already finished onboarding
-        if (res.user.onboarding_completed) {
-          try {
-            const data = await getMe();
-            // Hydrate match store with existing profile
-            const { hydrateProfile, setIsUpdating } = useMatchStore.getState();
-            hydrateProfile(
-              data.profile || {},
-              data.preferences || {},
-              data.focuses || [],
-              data.preferred_builds || [],
-              data.photos || [],
-            );
-            setIsUpdating(true);
-            router.push("/matchmaking/Step1");
-          } catch (err) {
-            console.error("Failed to fetch profile for update", err);
-            router.push("/matchmaking/Step1"); // Fallback
-          }
-        } else {
-          router.push("/matchmaking/Step1");
-        }
+        // Directly route to registration complete
+        router.push("/registration-complete");
       }
     } catch (err: any) {
       setError(
