@@ -238,37 +238,33 @@ export default function EventDetailsPage({ event }: Props) {
       if (res.access_token && res.user) {
         setAuth(res.access_token, res.user);
 
-        try {
-          const computeInches = (ftStr: string, inStr: string) => {
-            if (!ftStr && !inStr) return undefined;
-            const ft = ftStr ? parseInt(ftStr, 10) : 0;
-            const ins = inStr ? parseInt(inStr, 10) : 0;
-            return (ft * 12) + ins;
-          };
+        const computeInches = (ftStr: string, inStr: string) => {
+          if (!ftStr && !inStr) return undefined;
+          const ft = ftStr ? parseInt(ftStr, 10) : 0;
+          const ins = inStr ? parseInt(inStr, 10) : 0;
+          return (ft * 12) + ins;
+        };
 
-          await completeOnboarding({
-            profile: {
-              gender: signupForm.gender || undefined,
-              age: signupForm.age ? parseInt(signupForm.age, 10) : undefined,
-              build: signupForm.build || undefined,
-              skin_tone: signupForm.skin_tone || undefined,
-              height: computeInches(signupForm.height_ft, signupForm.height_in),
-              relationship_goal: signupForm.relationship_goal || undefined,
-              conflict_style: signupForm.conflict_style || undefined,
-              instagram: signupForm.instagram || undefined,
-              tiktok: signupForm.tiktok || undefined,
-            },
-            preferences: {
-              preferred_min_age: signupForm.preferred_min_age ? parseInt(signupForm.preferred_min_age, 10) : undefined,
-              preferred_max_age: signupForm.preferred_max_age ? parseInt(signupForm.preferred_max_age, 10) : undefined,
-              preferred_min_height: computeInches(signupForm.preferred_min_height_ft, signupForm.preferred_min_height_in),
-              preferred_max_height: computeInches(signupForm.preferred_max_height_ft, signupForm.preferred_max_height_in),
-            },
-            preferred_builds: signupForm.preferred_builds.length > 0 ? signupForm.preferred_builds : undefined,
-          });
-        } catch (onboardingErr) {
-          console.warn("Onboarding partial failure:", onboardingErr);
-        }
+        await completeOnboarding({
+          profile: {
+            gender: signupForm.gender || undefined,
+            age: signupForm.age ? parseInt(signupForm.age, 10) : undefined,
+            build: signupForm.build || undefined,
+            skin_tone: signupForm.skin_tone || undefined,
+            height: computeInches(signupForm.height_ft, signupForm.height_in),
+            relationship_goal: signupForm.relationship_goal || undefined,
+            conflict_style: signupForm.conflict_style || undefined,
+            instagram: signupForm.instagram || undefined,
+            tiktok: signupForm.tiktok || undefined,
+          },
+          preferences: {
+            preferred_min_age: signupForm.preferred_min_age ? parseInt(signupForm.preferred_min_age, 10) : undefined,
+            preferred_max_age: signupForm.preferred_max_age ? parseInt(signupForm.preferred_max_age, 10) : undefined,
+            preferred_min_height: computeInches(signupForm.preferred_min_height_ft, signupForm.preferred_min_height_in),
+            preferred_max_height: computeInches(signupForm.preferred_max_height_ft, signupForm.preferred_max_height_in),
+          },
+          preferred_builds: signupForm.preferred_builds.length > 0 ? signupForm.preferred_builds : undefined,
+        });
 
         const meData = await getMe().catch(() => null);
         const userObj = meData?.user || res.user;
@@ -594,12 +590,9 @@ export default function EventDetailsPage({ event }: Props) {
                               <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Skin Tone</label>
                               <select required value={signupForm.skin_tone} onChange={(e) => setSignupForm({ ...signupForm, skin_tone: e.target.value })} className="w-full text-base sm:text-sm rounded-2xl bg-white/5 border border-white/10 px-4 py-3 outline-none focus:border-white/30 text-white transition-colors appearance-none">
                                 <option value="" disabled>Select tone</option>
-                                <option value="Light">Light</option>
                                 <option value="Fair">Fair</option>
-                                <option value="Medium">Medium</option>
-                                <option value="Olive">Olive</option>
+                                <option value="Tan">Tan</option>
                                 <option value="Brown">Brown</option>
-                                <option value="Dark Brown">Dark Brown</option>
                                 <option value="Dark">Dark</option>
                               </select>
                             </div>
