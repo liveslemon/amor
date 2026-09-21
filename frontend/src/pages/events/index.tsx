@@ -112,7 +112,9 @@ export default function EventsIndexPage() {
             <h1 className="font-serif text-xl tracking-tight text-white">
               Campus Events
             </h1>
-            <span className="text-xs text-white/40">Minglee Singles</span>
+            <span className="text-xs text-white/40">
+              <span className="font-[family-name:var(--font-marker)] text-xs text-[#FFB6C1] font-normal">Minglee</span> Singles
+            </span>
           </div>
         </header>
 
@@ -120,7 +122,7 @@ export default function EventsIndexPage() {
           {/* Desktop Title & Subtitle */}
           <div className="hidden md:block space-y-1">
             <h1 className="font-serif text-3xl lg:text-4xl text-white tracking-tight">
-              Campus Events
+              Campus <span className="font-[family-name:var(--font-marker)] text-[#FFB6C1] inline-block -rotate-2 font-normal">Events</span>
             </h1>
             <p className="text-sm text-white/60">
               Curated social parties, weekend mixers, and date-friendly events near you.

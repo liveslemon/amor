@@ -57,7 +57,10 @@ export default function PrivacyPage() {
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-xs font-sans uppercase tracking-[0.2em] text-[#FFB6C1]">
               <ShieldCheck className="w-4 h-4" />
-              <span>Campus Community Guidelines</span>
+              <span className="flex items-center gap-1">
+                <span className="font-[family-name:var(--font-marker)] capitalize text-sm font-normal text-white">Minglee</span>
+                <span>Community Guidelines</span>
+              </span>
             </div>
 
             <h1 className="font-serif text-3xl sm:text-4xl text-white tracking-tight">

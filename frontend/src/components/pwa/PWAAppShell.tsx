@@ -62,8 +62,8 @@ export function PWAAppShell({ children }: PWAAppShellProps) {
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-white">
               <Heart className="h-4 w-4 text-[#FFB6C1]" />
             </div>
-            <span className="text-lg font-semibold tracking-[0.14em] font-serif">
-              {APP_CONFIG.name.toUpperCase()}
+            <span className="text-xl font-normal tracking-wide font-[family-name:var(--font-marker)]">
+              {APP_CONFIG.name}
             </span>
           </Link>
 
