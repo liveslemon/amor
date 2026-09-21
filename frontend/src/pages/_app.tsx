@@ -20,7 +20,19 @@ const permanentMarker = Permanent_Marker({
   subsets: ["latin"],
 });
 
+import React, { useEffect } from "react";
+import PWANavigation from "@/components/pwa/PWANavigation";
+
 export default function App({ Component, pageProps }: AppProps) {
+  useEffect(() => {
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/sw.js", { scope: "/" })
+        .catch((err) => {
+          console.warn("PWA Service Worker registration warning:", err);
+        });
+    }
+  }, []);
   return (
     <div className={`${inter.variable} ${youngSerif.variable} ${permanentMarker.variable} font-sans`}>
       <Head>
@@ -34,6 +46,7 @@ export default function App({ Component, pageProps }: AppProps) {
         />
       </Head>
       <Component {...pageProps} />
+      <PWANavigation />
     </div>
   );
 }
