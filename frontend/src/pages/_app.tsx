@@ -22,6 +22,7 @@ const permanentMarker = Permanent_Marker({
 
 import React, { useEffect } from "react";
 import PWANavigation from "@/components/pwa/PWANavigation";
+import { initGlobalHaptics } from "@/lib/haptics";
 
 export default function App({ Component, pageProps }: AppProps) {
   useEffect(() => {
@@ -32,6 +33,11 @@ export default function App({ Component, pageProps }: AppProps) {
           console.warn("PWA Service Worker registration warning:", err);
         });
     }
+
+    const cleanupHaptics = initGlobalHaptics();
+    return () => {
+      cleanupHaptics();
+    };
   }, []);
   return (
     <div className={`${inter.variable} ${youngSerif.variable} ${permanentMarker.variable} font-sans`}>
