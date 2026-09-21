@@ -21,6 +21,7 @@ import {
 import API from "@/api/client";
 import { useAuthStore } from "@/store/useAuthStore";
 import { APP_CONFIG } from "@/config/app";
+import { triggerHaptic } from "@/lib/haptics";
 
 interface PartnerProfile {
   id: string;
@@ -128,6 +129,7 @@ export default function DatesPage() {
   }, [router]);
 
   const handleWhatsAppChat = () => {
+    triggerHaptic("medium");
     if (!matchData?.partner?.whatsapp_number) return;
     const cleanNumber = matchData.partner.whatsapp_number.replace("+", "");
     const text = encodeURIComponent(
@@ -137,6 +139,7 @@ export default function DatesPage() {
   };
 
   const handleMomentVote = (rating: string) => {
+    triggerHaptic("success");
     setMomentFeedback(rating);
     setFeedbackSubmitted(true);
     setTimeout(() => {
