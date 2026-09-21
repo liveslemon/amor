@@ -1,0 +1,39 @@
+{
+  "name": "Minglee",
+  "short_name": "Minglee",
+  "description": "Minglee helps you find real connections through personalized event-based matching.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0f1a",
+  "theme_color": "#ff6b9d",
+  "id": "/",
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/match-poster.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "categories": ["social", "lifestyle"],
+  "shortcuts": [
+    {
+      "name": "Browse events",
+      "short_name": "Events",
+      "description": "See upcoming Minglee events",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/match-poster.png",
+          "sizes": "512x512",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

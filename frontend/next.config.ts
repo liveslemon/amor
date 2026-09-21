@@ -1,4 +1,16 @@
 import type { NextConfig } from "next";
+import withPWAInit from "@ducanh2912/next-pwa";
+
+const withPWA = withPWAInit({
+  dest: "public",
+  disable: process.env.NODE_ENV === "development",
+  register: false,
+  workboxOptions: {
+    disableDevLogs: true,
+    skipWaiting: false,
+    clientsClaim: false,
+  },
+});
 
 const nextConfig: NextConfig = {
   reactStrictMode: false,
@@ -6,6 +18,7 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  turbopack: {},
 };
 
-export default nextConfig;
+export default withPWA(nextConfig);
