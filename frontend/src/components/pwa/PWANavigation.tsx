@@ -57,7 +57,7 @@ export default function PWANavigation() {
             href="/home"
             className="flex items-center gap-2 group cursor-pointer"
           >
-            <span className="font-serif text-2xl tracking-tight text-white group-hover:text-white/90 transition-colors">
+            <span className="font-[family-name:var(--font-marker)] text-2xl tracking-wide text-white group-hover:text-white/90 transition-colors">
               {APP_CONFIG.name}
             </span>
             <span className="w-1.5 h-1.5 rounded-full bg-[#FFB6C1]" />

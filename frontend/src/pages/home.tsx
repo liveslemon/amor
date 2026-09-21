@@ -149,10 +149,10 @@ export default function PWAHome() {
 
       <div className="min-h-screen bg-[#000B1A] text-[#F8F9FA] pb-28 md:pb-16">
         {/* Mobile-only Top App Header (Desktop uses PWANavigation top navbar) */}
-        <header className="md:hidden sticky top-0 z-30 bg-[#000B1A] border-b border-white/5 px-4 py-3.5">
+        <header className="md:hidden sticky top-0 z-30 bg-[#000B1A] border-b border-white/5 px-4 py-3">
           <div className="max-w-md mx-auto flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="font-serif text-xl tracking-tight text-white">
+              <span className="font-[family-name:var(--font-marker)] text-2xl tracking-wide text-white">
                 {APP_CONFIG.name}
               </span>
               <span className="w-1.5 h-1.5 rounded-full bg-[#FFB6C1]" />
@@ -177,11 +177,19 @@ export default function PWAHome() {
               Hey, {displayName} 👋
             </h1>
             <p className="font-sans text-sm sm:text-base text-white/60">
-              {countdown.isFridayNow
-                ? "Your Friday match is live. Make your move."
-                : countdown.isThursday
-                ? "Tomorrow is Match Day. Someone is getting paired with you."
-                : "Your next connection starts here."}
+              {countdown.isFridayNow ? (
+                <>
+                  Your <span className="font-[family-name:var(--font-marker)] text-[#FFB6C1] inline-block -rotate-1 font-normal">Friday match</span> is live. Make your move.
+                </>
+              ) : countdown.isThursday ? (
+                <>
+                  Tomorrow is <span className="font-[family-name:var(--font-marker)] text-[#FFB6C1] inline-block -rotate-1 font-normal">Match Day</span>. Someone is getting paired with you.
+                </>
+              ) : (
+                <>
+                  Your next connection starts here on <span className="font-[family-name:var(--font-marker)] text-[#FFB6C1] inline-block -rotate-1 font-normal">Friday.</span>
+                </>
+              )}
             </p>
           </div>
 
@@ -303,7 +311,7 @@ export default function PWAHome() {
                           Your Friday Date
                         </span>
                         <h2 className="font-serif text-2xl sm:text-3xl text-white tracking-tight">
-                          Someone is waiting...
+                          Someone is <span className="font-[family-name:var(--font-marker)] text-[#FFB6C1] inline-block -rotate-2 font-normal">waiting...</span>
                         </h2>
                         <p className="text-xs sm:text-sm text-white/50 font-sans">
                           Next drop unlocks Friday at 8:00 AM WAT
@@ -467,8 +475,9 @@ export default function PWAHome() {
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-sm sm:text-base font-medium text-white">
-                            Minglee Support
+                          <span className="text-sm sm:text-base font-medium text-white flex items-center gap-1">
+                            <span className="font-[family-name:var(--font-marker)] text-base font-normal text-white">Minglee</span>
+                            <span>Support</span>
                           </span>
                           <span className="text-[10px] bg-white/10 text-white/70 px-1.5 py-0.2 rounded-full font-medium">
                             Verified
@@ -535,7 +544,10 @@ export default function PWAHome() {
               <div className="rounded-2xl bg-white/[0.02] p-5 space-y-2 text-xs text-white/60">
                 <div className="flex items-center gap-2 text-white font-medium">
                   <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span>Private Members-Only Circle</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="font-[family-name:var(--font-marker)] text-sm font-normal text-white">Minglee</span>
+                    <span>Private Circle</span>
+                  </span>
                 </div>
                 <p className="leading-relaxed text-white/50">
                   Every Minglee member is authenticated with active campus credentials. Matches drop every Friday at 8:00 AM WAT.

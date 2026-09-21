@@ -389,8 +389,9 @@ export default function DatesPage() {
               {/* MINGLEE MOMENTS - Post-Date Interaction */}
               <div className="rounded-2xl bg-[#0c1322] p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-white/60">
-                    Minglee Moments
+                  <span className="text-xs font-semibold uppercase tracking-wider text-white/60 flex items-center gap-1.5">
+                    <span className="font-[family-name:var(--font-marker)] text-sm tracking-normal capitalize text-[#FFB6C1] font-normal">Minglee</span>
+                    <span>Moments</span>
                   </span>
                   <span className="text-[10px] text-white/40">
                     Feedback Loop

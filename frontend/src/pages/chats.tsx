@@ -146,8 +146,9 @@ export default function ChatsPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-serif text-base text-white">
-                          Minglee Support
+                        <span className="font-serif text-base text-white flex items-center gap-1">
+                          <span className="font-[family-name:var(--font-marker)] text-base font-normal text-white">Minglee</span>
+                          <span>Support</span>
                         </span>
                         <span className="text-[9px] font-sans font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/10 text-white/80">
                           Concierge
