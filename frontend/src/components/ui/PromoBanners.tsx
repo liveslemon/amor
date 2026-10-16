@@ -1,46 +1,52 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Calendar, ArrowRight, Flame } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpRight,
+  CalendarDays,
+  Heart,
+  Sparkles,
+} from "lucide-react";
+import API from "@/api/client";
 
-interface PromoBannerItem {
+interface Promo {
   id: string;
-  badge: string;
-  badgeColor: string;
   title: string;
-  markerWord?: string;
   description: string;
-  actionText: string;
-  actionHref: string;
+  image_url?: string;
+  target_url: string;
+  label: string;
   icon: React.ReactNode;
+  external?: boolean;
 }
 
-const DEFAULT_PROMOS: PromoBannerItem[] = [
+interface LiveAd {
+  id: string;
+  title: string;
+  subtitle?: string;
+  image_url?: string;
+  target_url: string;
+}
+
+const DEFAULT_PROMOS: Promo[] = [
   {
     id: "friday-drop",
-    badge: "WEEKLY DROP • FRIDAY 8:00 AM",
-    badgeColor: "text-pink-400 border-pink-500/20 bg-pink-500/10",
-    title: "Friday Match",
-    markerWord: "Drop",
-    description:
-      "Handcrafted dates delivered directly to you every Friday morning. Set your preferences before Tuesday midnight to be paired!",
-    actionText: "View Date Status",
-    actionHref: "/date",
-    icon: <Sparkles className="w-5 h-5 text-pink-400" />,
+    title: "Friday Match Drop",
+    description: "Your next intentional connection arrives every Friday.",
+    target_url: "/date",
+    label: "Weekly match",
+    icon: <Heart className="h-5 w-5 text-[#FFB6C1]" />,
   },
   {
     id: "campus-events",
-    badge: "SPECIAL EVENT • LIVE RSVP",
-    badgeColor: "text-orange-400 border-orange-500/20 bg-orange-500/10",
-    title: "Mingle Campus",
-    markerWord: "Mixers",
-    description:
-      "Over 200+ singles meet up across our campus mixer events. RSVP now to secure your pass for the next community night.",
-    actionText: "Explore Events",
-    actionHref: "/events",
-    icon: <Flame className="w-5 h-5 text-orange-400" />,
+    title: "Campus Events",
+    description: "Find mixers, meetups, and date-friendly events near you.",
+    target_url: "/events",
+    label: "Explore events",
+    icon: <CalendarDays className="h-5 w-5 text-amber-300" />,
   },
 ];
 
@@ -49,103 +55,190 @@ interface PromoBannersProps {
 }
 
 export default function PromoBanners({ className = "" }: PromoBannersProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
+  const [banners, setBanners] = useState<Promo[]>(DEFAULT_PROMOS);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const seenAds = useRef(new Set<string>());
 
   useEffect(() => {
-    if (isPaused) return;
-    const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % DEFAULT_PROMOS.length);
-    }, 7000);
-    return () => clearInterval(timer);
-  }, [isPaused]);
+    let active = true;
 
-  const currentPromo = DEFAULT_PROMOS[currentIndex];
+    API.get<{ data?: LiveAd[] }>("/ads", {
+      params: { placement: "home-banner", date: new Date().toISOString() },
+    })
+      .then((response) => {
+        const ads = Array.isArray(response.data.data)
+          ? response.data.data
+          : [];
+        if (!active || ads.length === 0) return;
+
+        const liveBanners: Promo[] = ads.map((ad) => ({
+          id: String(ad.id),
+          title: ad.title,
+          description: ad.subtitle || "A promotion picked for the Minglee community.",
+          image_url: ad.image_url,
+          target_url: ad.target_url,
+          label: "Promotion",
+          icon: <Sparkles className="h-5 w-5 text-[#FFB6C1]" />,
+          external: /^https?:\/\//i.test(ad.target_url || ""),
+        }));
+        setBanners(liveBanners);
+        setActiveIndex(0);
+      })
+      .catch((error) => {
+        console.warn("Could not load live promotions; showing app promotions:", error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const activeBanner = banners[activeIndex];
+    if (!activeBanner || activeBanner.label !== "Promotion" || seenAds.current.has(activeBanner.id)) {
+      return;
+    }
+
+    seenAds.current.add(activeBanner.id);
+    API.post(`/ads/${encodeURIComponent(activeBanner.id)}/impression`).catch(
+      (error) => {
+        console.warn("Could not record promotion impression:", error);
+      },
+    );
+  }, [activeIndex, banners]);
+
+  const updateActiveIndex = () => {
+    const carousel = carouselRef.current;
+    const firstCard = carousel?.firstElementChild as HTMLElement | null;
+    if (!carousel || !firstCard) return;
+
+    const gap = Number.parseFloat(getComputedStyle(carousel).columnGap) || 0;
+    const step = firstCard.getBoundingClientRect().width + gap;
+    if (step > 0) {
+      setActiveIndex(
+        Math.max(0, Math.min(banners.length - 1, Math.round(carousel.scrollLeft / step))),
+      );
+    }
+  };
+
+  const scrollToBanner = (index: number) => {
+    const carousel = carouselRef.current;
+    const card = carousel?.children[index] as HTMLElement | undefined;
+    if (!carousel || !card) return;
+    const left =
+      carousel.scrollLeft +
+      card.getBoundingClientRect().left -
+      carousel.getBoundingClientRect().left;
+    carousel.scrollTo({ left, behavior: "smooth" });
+  };
 
   return (
-    <div
-      className={`w-full relative overflow-hidden rounded-2xl md:rounded-3xl border border-white/10 bg-[#0c1220] p-5 sm:p-6 shadow-xl ${className}`}
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
+    <section
+      aria-label="Promotions"
+      aria-roledescription="carousel"
+      className={`space-y-3 ${className}`}
     >
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentPromo.id}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.35, ease: "easeOut" }}
-          className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-        >
-          <div className="flex items-start gap-3.5 sm:gap-4 min-w-0">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5">
-              {currentPromo.icon}
-            </div>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5" aria-label="Choose promotion">
+          {banners.map((banner, index) => (
+            <button
+              key={banner.id}
+              type="button"
+              onClick={() => scrollToBanner(index)}
+              aria-label={`Show promotion ${index + 1}: ${banner.title}`}
+              aria-current={activeIndex === index ? "true" : undefined}
+              className={`h-1.5 rounded-full transition-all ${
+                activeIndex === index ? "w-6 bg-white" : "w-1.5 bg-white/30"
+              }`}
+            />
+          ))}
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => scrollToBanner(Math.max(0, activeIndex - 1))}
+            disabled={activeIndex === 0}
+            aria-label="Previous promotion"
+            className="rounded-full p-1.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-30"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollToBanner(Math.min(banners.length - 1, activeIndex + 1))}
+            disabled={activeIndex >= banners.length - 1}
+            aria-label="Next promotion"
+            className="rounded-full p-1.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-30"
+          >
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
 
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                <span
-                  className={`rounded-full border px-2.5 py-0.5 text-[10px] font-sans font-medium uppercase tracking-[0.16em] ${currentPromo.badgeColor}`}
-                >
-                  {currentPromo.badge}
+      <div
+        ref={carouselRef}
+        onScroll={updateActiveIndex}
+        className="flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+      {banners.map((banner) => {
+        const content = (
+          <div className="relative flex h-full min-h-36 items-end overflow-hidden rounded-2xl border border-white/10 bg-[#0c1322] p-4 sm:min-h-40 sm:p-5">
+            {banner.image_url && (
+              <img
+                src={banner.image_url}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#070b14] via-[#070b14]/75 to-[#070b14]/10" />
+            <div className="relative z-10 min-w-0">
+              <div className="mb-2 flex items-center gap-2">
+                {banner.icon}
+                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/70">
+                  {banner.label}
                 </span>
               </div>
-
-              <h3 className="font-serif text-xl sm:text-2xl text-white tracking-tight leading-snug">
-                {currentPromo.title}{" "}
-                {currentPromo.markerWord && (
-                  <span className="font-[family-name:var(--font-marker)] text-[#ff69b4] inline-block -rotate-2 ml-1 font-normal tracking-wide">
-                    {currentPromo.markerWord}
-                  </span>
-                )}
-              </h3>
-
-              <p className="mt-1 max-w-xl font-sans text-xs sm:text-sm text-white/60 leading-relaxed">
-                {currentPromo.description}
+              <h2 className="font-serif text-xl text-white">{banner.title}</h2>
+              <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-white/65">
+                {banner.description}
               </p>
             </div>
+            <ArrowUpRight className="absolute right-4 top-4 h-4 w-4 text-white/70" />
           </div>
+        );
 
-          <div className="flex items-center justify-between sm:justify-end gap-3 sm:shrink-0 pt-2 sm:pt-0">
-            <div className="flex items-center gap-1.5 sm:hidden">
-              {DEFAULT_PROMOS.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setCurrentIndex(idx)}
-                  className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                    currentIndex === idx ? "w-5 bg-white" : "w-1.5 bg-white/25"
-                  }`}
-                  aria-label={`Go to promotion ${idx + 1}`}
-                />
-              ))}
-            </div>
+        const handleClick = () => {
+          if (banner.label === "Promotion") {
+            API.post(`/ads/${encodeURIComponent(banner.id)}/click`).catch(
+              (error) => console.warn("Could not record promotion click:", error),
+            );
+          }
+        };
 
-            <Link href={currentPromo.actionHref}>
-              <button
-                type="button"
-                className="h-10 sm:h-11 cursor-pointer rounded-full bg-white px-5 sm:px-6 font-sans text-xs sm:text-sm font-semibold text-[#0a0f1a] transition-all hover:bg-white/90 active:scale-[0.98] flex items-center gap-2"
-              >
-                <span>{currentPromo.actionText}</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </Link>
-          </div>
-        </motion.div>
-      </AnimatePresence>
-
-      {/* Desktop Pagination Indicator */}
-      <div className="hidden sm:flex absolute bottom-3 right-6 items-center gap-1.5">
-        {DEFAULT_PROMOS.map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => setCurrentIndex(idx)}
-            className={`h-1.5 rounded-full transition-all cursor-pointer ${
-              currentIndex === idx ? "w-5 bg-white" : "w-1.5 bg-white/25 hover:bg-white/40"
-            }`}
-            aria-label={`Go to promo ${idx + 1}`}
-          />
-        ))}
+        return banner.external ? (
+          <a
+            key={banner.id}
+            href={banner.target_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={handleClick}
+            className="block min-w-0 shrink-0 basis-[88%] snap-start focus-visible:outline focus-visible:outline-2 focus-visible:outline-white sm:basis-[calc(50%-0.375rem)]"
+          >
+            {content}
+          </a>
+        ) : (
+          <Link
+            key={banner.id}
+            href={banner.target_url}
+            onClick={handleClick}
+            className="block min-w-0 shrink-0 basis-[88%] snap-start focus-visible:outline focus-visible:outline-2 focus-visible:outline-white sm:basis-[calc(50%-0.375rem)]"
+          >
+            {content}
+          </Link>
+        );
+      })}
       </div>
-    </div>
+    </section>
   );
 }

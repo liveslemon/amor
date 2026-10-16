@@ -22,9 +22,16 @@ const permanentMarker = Permanent_Marker({
 
 import React, { useEffect } from "react";
 import PWANavigation from "@/components/pwa/PWANavigation";
+import AIAssistantBubble from "@/components/pwa/AIAssistantBubble";
+import NotificationModal from "@/components/pwa/NotificationModal";
+import NotificationPopup from "@/components/pwa/NotificationPopup";
 import { initGlobalHaptics } from "@/lib/haptics";
+import API from "@/api/client";
+import { useAuthStore } from "@/store/useAuthStore";
 
 export default function App({ Component, pageProps }: AppProps) {
+  const setAuth = useAuthStore((state) => state.setAuth);
+
   useEffect(() => {
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
       navigator.serviceWorker
@@ -39,6 +46,22 @@ export default function App({ Component, pageProps }: AppProps) {
       cleanupHaptics();
     };
   }, []);
+
+  useEffect(() => {
+    const token =
+      localStorage.getItem("mingle_token") ||
+      localStorage.getItem("mingle_access_token");
+    if (!token) return;
+
+    API.get("/me/profile")
+      .then((response) => {
+        if (response.data?.user) setAuth(token, response.data.user);
+      })
+      .catch((error) => {
+        console.error("Could not restore the signed-in Minglee profile:", error);
+      });
+  }, [setAuth]);
+
   return (
     <div className={`${inter.variable} ${youngSerif.variable} ${permanentMarker.variable} font-sans`}>
       <Head>
@@ -53,6 +76,9 @@ export default function App({ Component, pageProps }: AppProps) {
       </Head>
       <Component {...pageProps} />
       <PWANavigation />
+      <AIAssistantBubble />
+      <NotificationModal />
+      <NotificationPopup />
     </div>
   );
 }

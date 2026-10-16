@@ -1,4 +1,5 @@
 import API from "@/api/client";
+import axios from "axios";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -41,9 +42,6 @@ export async function requestAndSubscribePush(): Promise<{ success: boolean; err
       return { success: false, error: "Notification permission was denied." };
     }
 
-    // Mark as enabled locally immediately since browser permission is granted
-    localStorage.setItem("minglee-push-enabled", "true");
-
     // 2. Proactively register and setup service worker push manager if supported
     if ("serviceWorker" in navigator && "PushManager" in window) {
       try {
@@ -78,26 +76,38 @@ export async function requestAndSubscribePush(): Promise<{ success: boolean; err
           }
 
           if (subscription) {
-            // Send subscription to backend
             await API.post("/notifications/subscribe", {
               subscription: subscription.toJSON(),
-            }).catch((err) => {
-              console.warn("Backend notification subscription sync skipped:", err);
             });
+            localStorage.setItem("minglee-push-enabled", "true");
+            return { success: true };
           }
         }
       } catch (swErr) {
-        console.warn("ServiceWorker push manager setup completed with warning:", swErr);
+        console.warn("Could not register push notifications:", swErr);
+        const message = axios.isAxiosError<{ error?: string }>(swErr)
+          ? swErr.response?.data?.error || swErr.message
+          : swErr instanceof Error
+            ? swErr.message
+            : null;
+        return {
+          success: false,
+          error: message || "Push registration failed. Please try again.",
+        };
       }
     }
 
-    return { success: true };
-  } catch (err: any) {
+    return {
+      success: false,
+      error: "Push notifications are not supported on this browser/device.",
+    };
+  } catch (err) {
     console.error("Failed to subscribe to push notifications:", err);
-    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-      localStorage.setItem("minglee-push-enabled", "true");
-      return { success: true };
-    }
-    return { success: false, error: err?.response?.data?.message || err.message || "Failed to subscribe" };
+    const message = axios.isAxiosError<{ message?: string }>(err)
+      ? err.response?.data?.message || err.message
+      : err instanceof Error
+        ? err.message
+        : null;
+    return { success: false, error: message || "Failed to subscribe" };
   }
 }

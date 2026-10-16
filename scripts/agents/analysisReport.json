@@ -1,0 +1,198 @@
+{
+  "timestamp": "2026-10-16T20:44:48.344Z",
+  "totalExecutionDurationMs": 20,
+  "agentsCount": 5,
+  "agentResults": {
+    "designLanguageAgent": {
+      "agent": "DesignLanguage & Aesthetic Auditor Agent",
+      "status": "COMPLETE",
+      "glowViolations": [],
+      "unnecessaryBorders": [
+        {
+          "file": "frontend/src/pages/chats.tsx",
+          "line": 270,
+          "content": "<span className=\"absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[#0c1322]\" />"
+        },
+        {
+          "file": "frontend/src/pages/date.tsx",
+          "line": 224,
+          "content": "<div className=\"inline-block h-8 w-8 animate-spin rounded-full border-2 border-white/40 border-t-transparent mb-3\" />"
+        }
+      ],
+      "aiAestheticTokens": [],
+      "colorRestraintIssues": [],
+      "recommendations": [],
+      "durationMs": 20,
+      "totalFilesScanned": 68,
+      "summary": "Scanned 68 files. Found 0 glow patterns, 2 heavy border styles, and 0 synthetic gradient tokens."
+    },
+    "adManagementAgent": {
+      "agent": "Advertising & Slot Scheduling Agent",
+      "status": "COMPLETE",
+      "specifications": {
+        "bannerAdsLimit": "3 per day (Media, text, link)",
+        "ticketBoostAds": "Event ticket boost integration",
+        "notificationAdsLimit": "1 per day (Text description, date to be shown >= 24 hours, link to popup)",
+        "popupAdsLimit": "1 per day (Media, text, link, date to be shown >= 24 hours)",
+        "clashRule": "Reason for denial: \"Clashing of dates with another advert\""
+      },
+      "backendChecks": {
+        "adService.js": {
+          "hasClashDetection": true,
+          "hasTicketBoost": true,
+          "has24hConstraint": false,
+          "hasBannerLimit3": false,
+          "hasNotificationLimit1": false,
+          "hasPopupLink": true
+        },
+        "adValidator.js": {
+          "hasClashDetection": false,
+          "hasTicketBoost": true,
+          "has24hConstraint": true,
+          "hasBannerLimit3": false,
+          "hasNotificationLimit1": false,
+          "hasPopupLink": true
+        },
+        "adController.js": {
+          "hasClashDetection": false,
+          "hasTicketBoost": false,
+          "has24hConstraint": false,
+          "hasBannerLimit3": false,
+          "hasNotificationLimit1": false,
+          "hasPopupLink": false
+        },
+        "schema.sql": {
+          "hasClashDetection": true,
+          "hasTicketBoost": true,
+          "has24hConstraint": true,
+          "hasBannerLimit3": true,
+          "hasNotificationLimit1": true,
+          "hasPopupLink": true
+        },
+        "adminRoutes.js": {
+          "hasClashDetection": false,
+          "hasTicketBoost": false,
+          "has24hConstraint": false,
+          "hasBannerLimit3": false,
+          "hasNotificationLimit1": false,
+          "hasPopupLink": false
+        }
+      },
+      "frontendChecks": {
+        "business.tsx": {
+          "hasBannerForm": true,
+          "hasNotificationForm": true,
+          "hasPopupForm": true,
+          "hasTicketBoostForm": true,
+          "showsClashReason": true,
+          "requires24hDuration": true
+        }
+      },
+      "gapsIdentified": [],
+      "durationMs": 4
+    },
+    "ticketManagerAgent": {
+      "agent": "Ticket Manager & Events Agent",
+      "status": "COMPLETE",
+      "requiredFields": [
+        "event_name",
+        "event_description",
+        "ticket_type",
+        "ticket_price",
+        "location"
+      ],
+      "databaseModelChecks": {
+        "hasEventName": true,
+        "hasEventDescription": true,
+        "hasTicketType": true,
+        "hasTicketPrice": true,
+        "hasLocation": true,
+        "hasTicketStatus": true,
+        "hasAdminApproval": true
+      },
+      "backendChecks": {
+        "eventSchemas.js": {
+          "validatesEventName": true,
+          "validatesEventDescription": true,
+          "validatesTicketType": true,
+          "validatesTicketPrice": true,
+          "validatesLocation": true
+        }
+      },
+      "frontendChecks": {
+        "business.tsx": {
+          "hasTicketManagerSection": false,
+          "hasTicketCreationForm": true,
+          "hasLocationInput": true,
+          "hasTicketTypeInput": true
+        }
+      },
+      "gapsIdentified": [],
+      "durationMs": 4
+    },
+    "adminPlatformAgent": {
+      "agent": "Admin Platform, Telemetry & Moderation Agent",
+      "status": "COMPLETE",
+      "requiredFeatures": {
+        "approveDenyAds": "Be able to approve or deny ads with clash checking reason",
+        "approveDenyTickets": "Be able to approve or deny tickets/events",
+        "datesOfTheWeek": "See dates of the week and total dates",
+        "activeUsers": "Live active users metric",
+        "pushAndPopupsMetrics": "Push notifications and popups telemetry",
+        "categoryOfAds": "Show category of ads used (banner, notification, popup, ticket_boost)",
+        "flaggedProfilesInspector": "Show flagged user profiles on the admin panel for admin to check profile"
+      },
+      "backendEndpoints": {
+        "hasStatsEndpoint": true,
+        "hasAdReviewEndpoint": true,
+        "hasTicketReviewEndpoint": true,
+        "hasFlaggedUsersEndpoint": true
+      },
+      "frontendAdminPage": {
+        "hasDatesOfTheWeek": true,
+        "hasTotalDates": true,
+        "hasActiveUsers": true,
+        "hasPushAndPopups": true,
+        "hasAdCategoryBreakdown": true,
+        "hasAdApprovalControls": true,
+        "hasTicketApprovalControls": true,
+        "hasFlaggedProfileViewer": true,
+        "hasAestheticGlows": false
+      },
+      "gapsIdentified": [],
+      "durationMs": 3
+    },
+    "imagePipelineAgent": {
+      "agent": "Media & Image Pipeline Agent",
+      "status": "COMPLETE",
+      "requirements": {
+        "downscaling": "Downscale image size without losing quality",
+        "maxImages": "Only 2 images allowed"
+      },
+      "codebaseChecks": {
+        "imageOptimization.ts": {
+          "usesCanvasDownscaling": true,
+          "usesWebPFormat": true,
+          "qualityPreserved": true,
+          "maxDimension": true
+        },
+        "me.tsx": {
+          "limitsToTwoImages": true,
+          "usesImageOptimization": true
+        },
+        "onboardingSchemas.js": {
+          "maxPhotosInSchema": true
+        },
+        "onboardingController.js": {
+          "enforcesMaxTwoInBackend": true
+        },
+        "business.tsx": {
+          "downscalesAdImages": true,
+          "limitsAdImages": true
+        }
+      },
+      "gapsIdentified": [],
+      "durationMs": 3
+    }
+  }
+}

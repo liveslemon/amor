@@ -19,6 +19,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import API from "@/api/client";
+import { fetchCurrentMatch } from "@/api/matches";
 import { useAuthStore } from "@/store/useAuthStore";
 import { APP_CONFIG } from "@/config/app";
 import { triggerHaptic } from "@/lib/haptics";
@@ -55,15 +56,6 @@ interface MatchData {
   partner: PartnerProfile;
 }
 
-interface PastMatchRecord {
-  id: string;
-  name: string;
-  date: string;
-  score: number;
-  photoUrl: string;
-  relationship_goal: string;
-}
-
 export default function DatesPage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
@@ -74,31 +66,7 @@ export default function DatesPage() {
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [momentFeedback, setMomentFeedback] = useState<string | null>(null);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
-
-  // Fallback / archived past dates for demonstration and history
-  const [pastMatches, setPastMatches] = useState<PastMatchRecord[]>([
-    {
-      id: "pm1",
-      name: "Emily",
-      date: "Aug 28, 2026",
-      score: 82,
-      photoUrl:
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80",
-      relationship_goal: "Long-term",
-    },
-    {
-      id: "pm2",
-      name: "Grace",
-      date: "Aug 21, 2026",
-      score: 76,
-      photoUrl:
-        "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&auto=format&fit=crop&q=80",
-      relationship_goal: "Marriage bound",
-    },
-  ]);
-
-  const [selectedPastMatch, setSelectedPastMatch] =
-    useState<PastMatchRecord | null>(null);
+  const [feedbackError, setFeedbackError] = useState("");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -114,19 +82,14 @@ export default function DatesPage() {
     const fetchCurrent = async () => {
       try {
         setLoading(true);
-        const res = await API.get("/matches/current");
-        if (res.data?.match) {
-          setMatchData(res.data.match);
-        }
-      } catch (err) {
-        console.warn("No active match:", err);
+        setMatchData(await fetchCurrentMatch<MatchData>(user?.id));
       } finally {
         setLoading(false);
       }
     };
 
     fetchCurrent();
-  }, [router]);
+  }, [router, user?.id]);
 
   const handleWhatsAppChat = () => {
     triggerHaptic("medium");
@@ -138,13 +101,22 @@ export default function DatesPage() {
     window.open(`https://wa.me/${cleanNumber}?text=${text}`, "_blank");
   };
 
-  const handleMomentVote = (rating: string) => {
+  const handleMomentVote = async (rating: string) => {
+    if (!matchData) return;
     triggerHaptic("success");
-    setMomentFeedback(rating);
-    setFeedbackSubmitted(true);
-    setTimeout(() => {
-      setFeedbackSubmitted(false);
-    }, 4000);
+    setFeedbackError("");
+    try {
+      await API.post(
+        `/matches/${encodeURIComponent(matchData.match_id)}/feedback`,
+        { rating },
+      );
+      setMomentFeedback(rating);
+      setFeedbackSubmitted(true);
+      setTimeout(() => setFeedbackSubmitted(false), 4000);
+    } catch (error) {
+      console.error("Could not submit match feedback:", error);
+      setFeedbackError("Date reviews are not connected to the backend yet.");
+    }
   };
 
   return (
@@ -413,26 +385,55 @@ export default function DatesPage() {
                     </span>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    {[
-                      { key: "loved", label: "❤️ Loved it" },
-                      { key: "nice", label: "🙂 It was nice" },
-                      { key: "neutral", label: "😐 Didn't click" },
-                      { key: "block", label: "🚫 Do not pair again" },
-                    ].map((btn) => (
-                      <button
-                        key={btn.key}
-                        onClick={() => handleMomentVote(btn.key)}
-                        className={`py-2 px-3 rounded-xl text-xs font-medium text-left transition-colors ${
-                          momentFeedback === btn.key
-                            ? "bg-white/20 text-white font-semibold"
-                            : "bg-white/[0.04] text-white/80 hover:bg-white/[0.08]"
-                        }`}
-                      >
-                        {btn.label}
-                      </button>
-                    ))}
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+                        Good
+                      </p>
+                      {[
+                        { key: "loved", label: "❤️ Loved it" },
+                        { key: "nice", label: "🙂 It was nice" },
+                      ].map((btn) => (
+                        <button
+                          key={btn.key}
+                          onClick={() => handleMomentVote(btn.key)}
+                          className={`w-full rounded-xl px-3 py-2 text-left text-xs font-medium transition-colors ${
+                            momentFeedback === btn.key
+                              ? "bg-emerald-500/20 text-white"
+                              : "bg-white/[0.04] text-white/80 hover:bg-white/[0.08]"
+                          }`}
+                        >
+                          {btn.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-rose-300">
+                        Could be better
+                      </p>
+                      {[
+                        { key: "neutral", label: "😐 Didn't click" },
+                        { key: "uncomfortable", label: "👎 Uncomfortable" },
+                      ].map((btn) => (
+                        <button
+                          key={btn.key}
+                          onClick={() => handleMomentVote(btn.key)}
+                          className={`w-full rounded-xl px-3 py-2 text-left text-xs font-medium transition-colors ${
+                            momentFeedback === btn.key
+                              ? "bg-rose-500/20 text-white"
+                              : "bg-white/[0.04] text-white/80 hover:bg-white/[0.08]"
+                          }`}
+                        >
+                          {btn.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
+                )}
+                {feedbackError && (
+                  <p role="alert" className="text-xs text-amber-200">
+                    {feedbackError}
+                  </p>
                 )}
               </div>
             </div>
@@ -440,86 +441,11 @@ export default function DatesPage() {
 
           {/* TAB 2: PAST DATES ARCHIVE */}
           {activeTab === "past" && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between px-0.5">
-                <span className="text-xs font-semibold uppercase tracking-wider text-white/50">
-                  Historical Matches
-                </span>
-                <span className="text-xs text-white/40">
-                  {pastMatches.length} past dates
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {pastMatches.map((pm) => (
-                  <div
-                    key={pm.id}
-                    onClick={() => setSelectedPastMatch(pm)}
-                    className="flex items-center justify-between p-4 rounded-2xl bg-[#0c1322] hover:bg-[#111a2c] transition-colors cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-3.5">
-                      <img
-                        src={pm.photoUrl}
-                        alt={pm.name}
-                        className="w-12 h-12 rounded-full object-cover"
-                      />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-serif text-base text-white">
-                            {pm.name}
-                          </span>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white/60">
-                            {pm.relationship_goal}
-                          </span>
-                        </div>
-                        <p className="text-xs text-white/40 mt-0.5">
-                          {pm.date} • {pm.score}% compatible
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
-                  </div>
-                ))}
-              </div>
-
-              {/* Past Match Detail Modal */}
-              {selectedPastMatch && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
-                  <div className="w-full max-w-md rounded-2xl bg-[#0c1322] p-6 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold uppercase text-white/50">
-                        Past Match Archive
-                      </span>
-                      <button
-                        onClick={() => setSelectedPastMatch(null)}
-                        className="text-xs text-white/60 hover:text-white cursor-pointer"
-                      >
-                        Close
-                      </button>
-                    </div>
-                    <img
-                      src={selectedPastMatch.photoUrl}
-                      alt={selectedPastMatch.name}
-                      className="w-full h-64 rounded-2xl object-cover"
-                    />
-                    <div className="space-y-1">
-                      <h3 className="font-serif text-2xl text-white">
-                        {selectedPastMatch.name}
-                      </h3>
-                      <p className="text-xs text-white/60">
-                        Matched on {selectedPastMatch.date} •{" "}
-                        {selectedPastMatch.score}% compatibility score
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setSelectedPastMatch(null)}
-                      className="w-full rounded-full bg-white/10 hover:bg-white/15 text-white py-2.5 text-xs font-medium transition-colors cursor-pointer"
-                    >
-                      Done
-                    </button>
-                  </div>
-                </div>
-              )}
+            <div className="rounded-2xl bg-[#0c1322] p-8 text-center">
+              <p className="font-serif text-xl text-white">Your date archive</p>
+              <p className="mt-2 text-sm text-white/50">
+                Past dates will appear here when match history is available.
+              </p>
             </div>
           )}
         </main>

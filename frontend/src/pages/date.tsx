@@ -18,11 +18,11 @@ import {
   UserCheck,
 } from "lucide-react";
 import API from "@/api/client";
+import { fetchCurrentMatch as fetchCurrentMatchData } from "@/api/matches";
 import { useAuthStore } from "@/store/useAuthStore";
 import { APP_CONFIG } from "@/config/app";
 import PromoBanners from "@/components/ui/PromoBanners";
 import NotificationCenter from "@/components/pwa/NotificationCenter";
-import NotificationModal from "@/components/pwa/NotificationModal";
 
 interface PartnerProfile {
   id: string;
@@ -64,6 +64,7 @@ export default function MyDatePage() {
   const [matchData, setMatchData] = useState<MatchData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
+  const [safetyStatus, setSafetyStatus] = useState("");
   const [timeLeft, setTimeLeft] = useState({ days: "00", hours: "00", minutes: "00", seconds: "00" });
 
   useEffect(() => {
@@ -79,19 +80,14 @@ export default function MyDatePage() {
     const fetchCurrentMatch = async () => {
       try {
         setLoading(true);
-        const res = await API.get("/matches/current");
-        if (res.data?.match) {
-          setMatchData(res.data.match);
-        }
-      } catch (err) {
-        console.warn("No active match or error loading match:", err);
+        setMatchData(await fetchCurrentMatchData<MatchData>(user?.id));
       } finally {
         setLoading(false);
       }
     };
 
     fetchCurrentMatch();
-  }, [router]);
+  }, [router, user?.id]);
 
   // Countdown to next Friday at 8:00 AM WAT
   useEffect(() => {
@@ -128,14 +124,46 @@ export default function MyDatePage() {
   }, []);
 
   const partner = matchData?.partner;
-  const partnerPhotos = partner?.photos && partner.photos.length > 0
-    ? partner.photos
-    : [{ image_url: "/assets/pexels-ketut-subiyanto-4350099.webp" }];
+  const partnerPhotos = (partner?.photos || []).slice(0, 2);
 
   const cleanWhatsapp = partner?.whatsapp_number?.replace(/[^0-9]/g, "") || "";
   const whatsappUrl = `https://wa.me/${cleanWhatsapp}?text=${encodeURIComponent(
     `Hey ${partner?.name || "there"}! We were paired on Minglee for our Friday date. Excited to meet you! 😊`
   )}`;
+
+  const submitSafetyAction = async (action: "block" | "report") => {
+    if (!partner?.id) return;
+    const confirmed = window.confirm(
+      action === "block"
+        ? `Block ${partner.name}? You will not be paired with this member again.`
+        : `Report ${partner.name}'s profile or photos for review?`,
+    );
+    if (!confirmed) return;
+
+    setSafetyStatus("");
+    try {
+      if (action === "block") {
+        await API.post(`/users/${encodeURIComponent(partner.id)}/block`);
+      } else {
+        await API.post("/reports", {
+          reported_user_id: partner.id,
+          reason: "Inappropriate profile photo",
+        });
+      }
+      setSafetyStatus(
+        action === "block"
+          ? "This member has been blocked."
+          : "Your report was sent to the safety team.",
+      );
+    } catch (error) {
+      console.error(`Could not ${action} this member:`, error);
+      setSafetyStatus(
+        action === "block"
+          ? "Blocking is unavailable until the safety service is connected."
+          : "Reporting is unavailable until the safety service is connected.",
+      );
+    }
+  };
 
   return (
     <>
@@ -144,7 +172,6 @@ export default function MyDatePage() {
       </Head>
 
       <div className="min-h-screen bg-[#0a0f1a] text-white flex flex-col selection:bg-pink-500/30">
-        <NotificationModal />
 
         {/* In-App Header */}
         <header className="sticky top-0 z-40 border-b border-white/5 bg-[#000B1A]">
@@ -233,11 +260,17 @@ export default function MyDatePage() {
                 {/* Photo Gallery Column */}
                 <div className="lg:col-span-5 space-y-3">
                   <div className="relative aspect-[3/4] w-full rounded-2xl md:rounded-3xl overflow-hidden bg-[#1a1a1a]">
-                    <img
-                      src={partnerPhotos[activePhotoIdx]?.image_url}
-                      alt={partner.name}
-                      className="h-full w-full object-cover transition-all duration-500"
-                    />
+                    {partnerPhotos[activePhotoIdx]?.image_url ? (
+                      <img
+                        src={partnerPhotos[activePhotoIdx].image_url}
+                        alt={partner.name}
+                        className="h-full w-full object-cover transition-all duration-500"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-white/35">
+                        <Heart className="h-12 w-12" />
+                      </div>
+                    )}
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-5">
                       <h2 className="text-2xl font-serif text-white">{partner.name}, {partner.profile?.age || 21}</h2>
                       <p className="text-xs text-white/70 flex items-center gap-1.5 mt-0.5">
@@ -355,6 +388,27 @@ export default function MyDatePage() {
                       <p className="text-[11px] text-center text-white/40 mt-2">
                         Matches persist throughout the week so you can plan your date at your own pace.
                       </p>
+                      <div className="grid grid-cols-2 gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => submitSafetyAction("report")}
+                          className="rounded-full bg-white/5 px-3 py-2 text-xs text-white/70 hover:bg-white/10"
+                        >
+                          Report profile/photo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => submitSafetyAction("block")}
+                          className="rounded-full bg-red-500/10 px-3 py-2 text-xs text-red-200 hover:bg-red-500/20"
+                        >
+                          Block member
+                        </button>
+                      </div>
+                      {safetyStatus && (
+                        <p role="status" className="pt-1 text-center text-xs text-amber-200">
+                          {safetyStatus}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

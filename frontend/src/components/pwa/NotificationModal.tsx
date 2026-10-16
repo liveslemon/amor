@@ -1,74 +1,79 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, X, CheckCircle2 } from "lucide-react";
+import { Bell, CheckCircle2 } from "lucide-react";
 import { isPushSupported, getNotificationPermissionStatus, requestAndSubscribePush } from "@/lib/pushNotifications";
 import { useAuthStore } from "@/store/useAuthStore";
 
 export default function NotificationModal() {
-  const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [subscribed, setSubscribed] = useState(false);
+  const [subscribedUserId, setSubscribedUserId] = useState<string | null>(null);
+  const [dismissedUserId, setDismissedUserId] = useState<string | null>(null);
+  const [error, setError] = useState("");
   const user = useAuthStore((state) => state.user);
+  const syncedUserId = useRef<string | null>(null);
+  const permissionStatus = getNotificationPermissionStatus();
+  const subscribed = Boolean(user && subscribedUserId === user.id);
+  const isOpen = Boolean(user) && dismissedUserId !== user?.id;
 
   useEffect(() => {
     if (typeof window === "undefined" || !user) return;
-    if (!isPushSupported()) return;
+    if (permissionStatus !== "granted") return;
 
-    const dismissed = localStorage.getItem("minglee-push-prompt-dismissed");
-    const enabled = localStorage.getItem("minglee-push-enabled");
-    const status = getNotificationPermissionStatus();
+    localStorage.setItem("minglee-push-enabled", "true");
+    if (syncedUserId.current === user.id) return;
+    syncedUserId.current = user.id;
+    let active = true;
+    requestAndSubscribePush()
+      .then((result) => {
+        if (!active) return;
+        if (result.success) {
+          setSubscribedUserId(user.id);
+          setDismissedUserId(user.id);
+          setError("");
+        } else {
+          setError(result.error || "Push notifications could not be enabled.");
+        }
+      })
+      .catch((syncError) => {
+        if (!active) return;
+        console.error("Could not sync push notifications:", syncError);
+        setError("Push notifications could not be enabled. Please try again.");
+      });
 
-    // If permission was already granted in Chrome settings, mark enabled and don't prompt
-    if (status === "granted") {
-      localStorage.setItem("minglee-push-enabled", "true");
-      setIsOpen(false);
-      return;
-    }
-
-    // Only show if user is logged in, push is supported, permission is 'default' (not granted/denied yet)
-    // and they haven't dismissed it in the last 3 days
-    if (status === "default" && !enabled) {
-      if (!dismissed || Date.now() - parseInt(dismissed, 10) > 3 * 24 * 60 * 60 * 1000) {
-        // Delay slightly for smooth page entrance
-        const timer = setTimeout(() => setIsOpen(true), 2500);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [user]);
+    return () => {
+      active = false;
+    };
+  }, [user, permissionStatus]);
 
   const handleEnable = async () => {
     setLoading(true);
+    setError("");
+    if (user) syncedUserId.current = user.id;
     try {
       const res = await requestAndSubscribePush();
       if (res.success) {
-        setSubscribed(true);
+        setSubscribedUserId(user?.id || null);
         setTimeout(() => {
-          setIsOpen(false);
+          setDismissedUserId(user?.id || null);
           setLoading(false);
         }, 1500);
         return;
-      } else {
-        localStorage.setItem("minglee-push-prompt-dismissed", Date.now().toString());
-        setIsOpen(false);
       }
+      setError(res.error || "Push notifications could not be enabled.");
     } catch (e) {
-      console.warn("Notification enable error:", e);
-      setIsOpen(false);
+      console.error("Notification enable error:", e);
+      setError("Push notifications could not be enabled. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDismiss = () => {
-    localStorage.setItem("minglee-push-prompt-dismissed", Date.now().toString());
-    setIsOpen(false);
-  };
+  if (!isOpen) return null;
 
   return (
     <AnimatePresence>
-      {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
           <motion.div
             initial={{ opacity: 0, scale: 0.94, y: 16 }}
@@ -77,14 +82,6 @@ export default function NotificationModal() {
             transition={{ duration: 0.3, ease: "easeOut" }}
             className="relative w-full max-w-md rounded-2xl bg-[#0c1220] p-6 text-white overflow-hidden"
           >
-            <button
-              onClick={handleDismiss}
-              aria-label="Close modal"
-              className="absolute top-4 right-4 p-1 text-white/40 hover:text-white transition-colors cursor-pointer rounded-full hover:bg-white/5"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
             <div className="flex flex-col items-center text-center">
               <div className="relative mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white/[0.04] text-[#FFB6C1]">
                 <Bell className="w-7 h-7" />
@@ -108,24 +105,33 @@ export default function NotificationModal() {
                     </span>
                   </h3>
                   <p className="mt-2 text-sm text-white/60 leading-relaxed max-w-sm">
-                    Never miss your Friday date! Enable push notifications so you get alerted instantly the moment your curated match drops.
+                    Minglee uses notifications for Friday matches and important account updates. Enable them to continue.
                   </p>
+
+                  {!isPushSupported() && (
+                    <p role="alert" className="mt-3 text-xs text-amber-200">
+                      This browser does not support push notifications. Open Minglee in a supported browser to continue.
+                    </p>
+                  )}
+                  {getNotificationPermissionStatus() === "denied" && (
+                    <p role="alert" className="mt-3 text-xs text-amber-200">
+                      Notifications are blocked in browser settings. Allow notifications for Minglee, then try again.
+                    </p>
+                  )}
+                  {error && (
+                    <p role="alert" className="mt-3 text-xs text-red-300">
+                      {error}
+                    </p>
+                  )}
 
                   <div className="mt-6 flex flex-col w-full gap-2.5">
                     <button
                       type="button"
                       onClick={handleEnable}
-                      disabled={loading}
+                      disabled={loading || !isPushSupported() || getNotificationPermissionStatus() === "denied"}
                       className="h-11 w-full cursor-pointer rounded-full bg-white px-6 font-sans text-sm font-semibold text-[#0a0f1a] transition-all hover:bg-white/90 active:scale-[0.98] disabled:opacity-50"
                     >
-                      {loading ? "Enabling..." : "Turn On Notifications"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleDismiss}
-                      className="h-10 w-full cursor-pointer rounded-full bg-white/5 px-5 font-sans text-sm font-medium text-white/60 transition-all hover:bg-white/10 hover:text-white"
-                    >
-                      Maybe Later
+                      {loading ? "Enabling..." : "Enable Required Notifications"}
                     </button>
                   </div>
                 </>
@@ -133,7 +139,6 @@ export default function NotificationModal() {
             </div>
           </motion.div>
         </div>
-      )}
     </AnimatePresence>
   );
 }
