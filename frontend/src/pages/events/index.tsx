@@ -164,8 +164,9 @@ export default function EventsIndexPage() {
           {/* Event Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 pt-1">
             {filteredEvents.map((evt) => (
-              <div
+              <Link
                 key={evt.id}
+                href={`/events/${evt.slug}`}
                 className="rounded-2xl bg-[#0c1322] overflow-hidden group"
               >
                 <div className="relative h-48 w-full bg-[#141c2e] overflow-hidden">
@@ -216,15 +217,12 @@ export default function EventsIndexPage() {
                     <span className="text-sm font-semibold text-white">
                       {evt.price}
                     </span>
-                    <Link
-                      href={`/events/${evt.slug}`}
-                      className="rounded-full bg-white/10 hover:bg-white/15 text-white px-4 py-2 text-xs font-medium transition-colors active:scale-95"
-                    >
+                    <span className="rounded-full bg-white/10 px-4 py-2 text-xs font-medium text-white transition-colors group-hover:bg-white/15">
                       View & Reserve →
-                    </Link>
+                    </span>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </main>

@@ -20,30 +20,36 @@ interface NotificationItem {
 export default function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const user = useAuthStore((state) => state.user);
 
   const fetchNotifications = async () => {
     if (!user) return;
     try {
-      setLoading(true);
       const res = await API.get("/notifications");
-      if (res.data?.notifications) {
-        setNotifications(res.data.notifications);
-      }
+      const items = res.data?.data?.notifications || res.data?.notifications;
+      setNotifications(
+        Array.isArray(items)
+          ? items.map((item: NotificationItem & { message?: string; action_url?: string }) => ({
+              ...item,
+              body: item.body || item.message || "",
+              url: item.url || item.action_url,
+            }))
+          : [],
+      );
     } catch (err) {
       console.warn("Failed to fetch notifications:", err);
-    } finally {
-      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchNotifications();
+    const initialFetch = setTimeout(fetchNotifications, 0);
     // Poll notifications every 30 seconds while active
     const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initialFetch);
+      clearInterval(interval);
+    };
   }, [user]);
 
   // Click outside to close

@@ -4,11 +4,14 @@ import React, { useState, useEffect } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import axios from "axios";
 import {
   User,
   Heart,
   ShieldCheck,
   Bell,
+  Camera,
+  Briefcase,
   MessageSquare,
   Sparkles,
   LogOut,
@@ -24,7 +27,14 @@ import {
 import { useAuthStore } from "@/store/useAuthStore";
 import { APP_CONFIG } from "@/config/app";
 import API from "@/api/client";
-import { savePreferences, saveProfile } from "@/api/profile";
+import {
+  savePhotos,
+  savePreferences,
+  savePreferredBuilds,
+  saveProfile,
+  uploadPhotoBinary,
+} from "@/api/profile";
+import { optimizeImage } from "@/lib/imageOptimization";
 
 export default function MePage() {
   const router = useRouter();
@@ -51,13 +61,14 @@ export default function MePage() {
   // Report Modal State
   const [reportReason, setReportReason] = useState("Harassment");
   const [reportDetails, setReportDetails] = useState("");
+  const [reportTargetId, setReportTargetId] = useState("");
   const [reportSuccess, setReportSuccess] = useState(false);
-
-  // Notification toggles
-  const [notifMatch, setNotifMatch] = useState(true);
-  const [notifMessages, setNotifMessages] = useState(true);
-  const [notifEvents, setNotifEvents] = useState(true);
-  const [dropTiming, setDropTiming] = useState("8:00 AM");
+  const [reportError, setReportError] = useState("");
+  const [profilePhotos, setProfilePhotos] = useState<
+    Array<{ image_url: string; photo_type?: string; upload_order: number }>
+  >([]);
+  const [photoStatus, setPhotoStatus] = useState("");
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -91,6 +102,7 @@ export default function MePage() {
         if (res.data?.profile?.conflict_style) {
           setConflictStyle(res.data.profile.conflict_style);
         }
+        setProfilePhotos((res.data?.photos || []).slice(0, 2));
       } catch (err) {
         console.warn("Could not load user profile:", err);
       }
@@ -116,10 +128,11 @@ export default function MePage() {
         preferred_min_height: computeInches(minHeightFt, minHeightIn),
         preferred_max_height: computeInches(maxHeightFt, maxHeightIn),
       });
+      if (builds.length > 0) await savePreferredBuilds(builds);
 
       await saveProfile({
-        relationship_goal: relationshipGoal as any,
-        conflict_style: conflictStyle as any,
+        relationship_goal: relationshipGoal,
+        conflict_style: conflictStyle,
       });
 
       setSaveStatus("Preferences updated successfully!");
@@ -128,22 +141,78 @@ export default function MePage() {
         setActiveModal(null);
       }, 1200);
     } catch (err) {
-      setSaveStatus("Saved locally.");
-      setTimeout(() => {
-        setSaveStatus(null);
-        setActiveModal(null);
-      }, 1000);
+      const message = axios.isAxiosError<{ error?: string }>(err)
+        ? err.response?.data?.error || err.message
+        : err instanceof Error
+          ? err.message
+          : null;
+      setSaveStatus(message || "Unable to save preferences. Please try again.");
     }
   };
 
-  const handleReportSubmit = (e: React.FormEvent) => {
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    event.target.value = "";
+    if (!selectedFile) return;
+    if (profilePhotos.length >= 2) {
+      setPhotoStatus("You can add up to two profile photos.");
+      return;
+    }
+
+    setUploadingPhoto(true);
+    setPhotoStatus("");
+    try {
+      const optimized = await optimizeImage(selectedFile);
+      const uploaded = await uploadPhotoBinary(optimized);
+      const nextPhotos = [
+        ...profilePhotos,
+        {
+          image_url: uploaded.image_url,
+          photo_type: profilePhotos.length === 0 ? "Profile" : "Gallery",
+          upload_order: profilePhotos.length + 1,
+        },
+      ];
+      await savePhotos(nextPhotos);
+      setProfilePhotos(nextPhotos);
+      setPhotoStatus("Photo uploaded and saved.");
+    } catch (error) {
+      console.error("Could not upload profile photo:", error);
+      const message = axios.isAxiosError<{ error?: string }>(error)
+        ? error.response?.data?.error || error.message
+        : error instanceof Error
+          ? error.message
+          : null;
+      setPhotoStatus(message || "Photo upload failed. Please try again.");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleReportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setReportSuccess(true);
-    setTimeout(() => {
-      setReportSuccess(false);
-      setActiveModal(null);
-      setReportDetails("");
-    }, 2000);
+    setReportError("");
+    try {
+      await API.post("/reports", {
+        reported_user_id: reportTargetId || undefined,
+        reason: reportReason,
+        details: reportDetails,
+      });
+      setReportSuccess(true);
+      setTimeout(() => {
+        setReportSuccess(false);
+        setActiveModal(null);
+        setReportDetails("");
+        setReportTargetId("");
+      }, 2000);
+    } catch (error) {
+      console.error("Could not submit user report:", error);
+      const message = axios.isAxiosError<{ error?: string }>(error)
+        ? error.response?.data?.error || error.message
+        : null;
+      setReportError(
+        message || "Reporting is unavailable until the safety service is connected.",
+      );
+    }
   };
 
   const handleTestWhatsApp = () => {
@@ -219,16 +288,64 @@ export default function MePage() {
                   </div>
                 </div>
 
-                {/* Profile Completeness Bar */}
-                <div className="pt-2 border-t border-white/5 space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-white/60">Profile Completeness</span>
-                    <span className="font-semibold text-white">85%</span>
+              </div>
+
+              <div className="rounded-2xl border border-white/5 bg-[#0c1322] p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-white">Profile photos</h3>
+                    <p className="mt-0.5 text-xs text-white/45">
+                      Up to two optimized photos
+                    </p>
                   </div>
-                  <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
-                    <div className="w-[85%] h-full rounded-full bg-white/60" />
-                  </div>
+                  <span className="text-xs text-white/45">
+                    {profilePhotos.length}/2
+                  </span>
                 </div>
+                <div className="mb-3 grid grid-cols-2 gap-2">
+                  {[0, 1].map((index) => (
+                    <div
+                      key={index}
+                      className="flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-white/[0.04]"
+                    >
+                      {profilePhotos[index] ? (
+                        <img
+                          src={profilePhotos[index].image_url}
+                          alt={`Profile photo ${index + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <Camera className="h-6 w-6 text-white/25" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <label
+                  className={`flex cursor-pointer items-center justify-center gap-2 rounded-full px-4 py-2.5 text-xs font-semibold ${
+                    profilePhotos.length >= 2 || uploadingPhoto
+                      ? "bg-white/10 text-white/40"
+                      : "bg-white text-black"
+                  }`}
+                >
+                  <Camera className="h-4 w-4" />
+                  {uploadingPhoto
+                    ? "Optimizing and uploading..."
+                    : profilePhotos.length >= 2
+                      ? "Photo limit reached"
+                      : "Add profile photo"}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="sr-only"
+                    disabled={profilePhotos.length >= 2 || uploadingPhoto}
+                    onChange={handlePhotoUpload}
+                  />
+                </label>
+                {photoStatus && (
+                  <p role="status" className="mt-2 text-xs text-white/65">
+                    {photoStatus}
+                  </p>
+                )}
               </div>
 
               {/* Private Member Guarantee */}
@@ -248,6 +365,26 @@ export default function MePage() {
 
             {/* Right Column: Settings Menu List */}
             <div className="md:col-span-7">
+              <Link
+                href="/business"
+                className="mb-4 flex items-center justify-between rounded-2xl border border-white/10 bg-[#0c1322] p-4 transition-colors hover:bg-white/[0.06]"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-[#FFB6C1]">
+                    <Briefcase className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-white">
+                      Business Suite
+                    </span>
+                    <p className="text-xs text-white/40">
+                      Manage promotions and event tickets
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-white/40" />
+              </Link>
+
               <div className="rounded-2xl bg-[#0c1322] border border-white/5 overflow-hidden divide-y divide-white/5">
                 {/* Match Preferences */}
                 <button
@@ -611,6 +748,7 @@ export default function MePage() {
                       "Harassment",
                       "Fake profile",
                       "Inappropriate messages",
+                      "Inappropriate profile image",
                       "Spam",
                       "Threats",
                       "Other",
@@ -633,6 +771,18 @@ export default function MePage() {
 
                 <div className="space-y-1">
                   <label className="text-xs font-semibold uppercase tracking-wider text-white/60">
+                    Member ID
+                  </label>
+                  <input
+                    value={reportTargetId}
+                    onChange={(event) => setReportTargetId(event.target.value)}
+                    placeholder="ID of the user to report"
+                    className="w-full rounded-xl bg-white/[0.04] p-2.5 text-xs text-white placeholder-white/40"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-white/60">
                     Additional Details
                   </label>
                   <textarea
@@ -643,6 +793,12 @@ export default function MePage() {
                     className="w-full rounded-xl bg-white/[0.04] p-2.5 text-xs text-white placeholder-white/40 focus:outline-none"
                   />
                 </div>
+
+                {reportError && (
+                  <p role="alert" className="text-xs text-amber-200">
+                    {reportError}
+                  </p>
+                )}
 
                 <button
                   type="submit"
@@ -708,62 +864,10 @@ export default function MePage() {
               </button>
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.04]">
-                <span className="text-xs text-white">
-                  Friday Match Reminders
-                </span>
-                <button
-                  onClick={() => setNotifMatch(!notifMatch)}
-                  className={`w-10 h-6 rounded-full transition-colors flex items-center px-0.5 cursor-pointer ${
-                    notifMatch ? "bg-white" : "bg-white/20"
-                  }`}
-                >
-                  <span
-                    className={`w-5 h-5 rounded-full bg-black transition-transform ${
-                      notifMatch ? "translate-x-4" : ""
-                    }`}
-                  />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.04]">
-                <span className="text-xs text-white">Campus Event Alerts</span>
-                <button
-                  onClick={() => setNotifEvents(!notifEvents)}
-                  className={`w-10 h-6 rounded-full transition-colors flex items-center px-0.5 cursor-pointer ${
-                    notifEvents ? "bg-white" : "bg-white/20"
-                  }`}
-                >
-                  <span
-                    className={`w-5 h-5 rounded-full bg-black transition-transform ${
-                      notifEvents ? "translate-x-4" : ""
-                    }`}
-                  />
-                </button>
-              </div>
-
-              <div className="space-y-1 pt-1">
-                <span className="text-[11px] uppercase font-semibold text-white/50">
-                  Friday Match Delivery Time
-                </span>
-                <div className="grid grid-cols-3 gap-2 pt-1">
-                  {["Immediately", "8:00 AM", "9:00 AM"].map((time) => (
-                    <button
-                      key={time}
-                      type="button"
-                      onClick={() => setDropTiming(time)}
-                      className={`text-xs py-2 rounded-xl text-center transition-all cursor-pointer ${
-                        dropTiming === time
-                          ? "bg-white text-black font-semibold"
-                          : "bg-white/[0.04] text-white/70 hover:bg-white/[0.08]"
-                      }`}
-                    >
-                      {time}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            <div className="rounded-xl bg-white/[0.04] p-4 text-sm text-white/75">
+              Minglee notifications are required for match drops and important
+              account updates. You can manage browser permission in your device
+              settings.
             </div>
 
             <button

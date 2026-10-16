@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import API from "@/api/client";
+import { fetchCurrentMatch } from "@/api/matches";
 import { useAuthStore } from "@/store/useAuthStore";
 import { APP_CONFIG } from "@/config/app";
 import SupportChatModal from "@/components/pwa/SupportChatModal";
@@ -27,6 +28,13 @@ interface CurrentMatch {
   };
 }
 
+interface MatchMessage {
+  id: string;
+  sender_id: string;
+  text: string;
+  created_at: string;
+}
+
 export default function ChatsPage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
@@ -34,6 +42,10 @@ export default function ChatsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [match, setMatch] = useState<CurrentMatch | null>(null);
   const [supportOpen, setSupportOpen] = useState(false);
+  const [messages, setMessages] = useState<MatchMessage[]>([]);
+  const [messageDraft, setMessageDraft] = useState("");
+  const [messageError, setMessageError] = useState("");
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -47,18 +59,70 @@ export default function ChatsPage() {
     }
 
     const fetchCurrent = async () => {
-      try {
-        const res = await API.get("/matches/current");
-        if (res.data?.match) {
-          setMatch(res.data.match);
-        }
-      } catch (err) {
-        // No active match
-      }
+      setMatch(await fetchCurrentMatch<CurrentMatch>(user?.id));
     };
 
     fetchCurrent();
-  }, [router]);
+  }, [router, user?.id]);
+
+  useEffect(() => {
+    if (!match?.match_id) return;
+    let active = true;
+    let interval: ReturnType<typeof setInterval> | undefined;
+
+    const refreshMessages = async () => {
+      try {
+        const response = await API.get(
+          `/matches/${encodeURIComponent(match.match_id)}/messages`,
+        );
+        if (!active) return false;
+        const items =
+          response.data?.data?.messages || response.data?.messages || [];
+        setMessages(Array.isArray(items) ? items : []);
+        setMessageError("");
+        return true;
+      } catch (error) {
+        if (!active) return false;
+        console.error("Could not load match messages:", error);
+        setMessageError("In-app messaging is not connected to the backend yet.");
+        if (interval) clearInterval(interval);
+        return false;
+      }
+    };
+
+    refreshMessages().then((loaded) => {
+      if (active && loaded) {
+        interval = setInterval(refreshMessages, 5000);
+      }
+    });
+
+    return () => {
+      active = false;
+      if (interval) clearInterval(interval);
+    };
+  }, [match?.match_id]);
+
+  const sendMessage = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!match?.match_id || !messageDraft.trim() || sendingMessage) return;
+    setSendingMessage(true);
+    setMessageError("");
+    try {
+      const response = await API.post(
+        `/matches/${encodeURIComponent(match.match_id)}/messages`,
+        { text: messageDraft.trim() },
+      );
+      if (response.data?.message) {
+        setMessages((current) => [...current, response.data.message]);
+      }
+      setMessageDraft("");
+    } catch (error) {
+      console.error("Could not send match message:", error);
+      setMessageError("In-app messaging is not connected to the backend yet.");
+    } finally {
+      setSendingMessage(false);
+    }
+  };
 
   const handleWhatsAppChat = () => {
     if (!match?.partner?.whatsapp_number) return;
@@ -237,6 +301,51 @@ export default function ChatsPage() {
                         View Dossier
                       </Link>
                     </div>
+
+                    <div className="border-t border-white/5 pt-3">
+                      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                        Minglee chat
+                      </p>
+                      <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl bg-black/20 p-3">
+                        {messages.length === 0 ? (
+                          <p className="text-center text-xs text-white/40">
+                            Start a conversation with your Friday match.
+                          </p>
+                        ) : (
+                          messages.map((message) => (
+                            <div
+                              key={message.id}
+                              className={`flex ${message.sender_id === user?.id ? "justify-end" : "justify-start"}`}
+                            >
+                              <p className="max-w-[85%] rounded-2xl bg-white/10 px-3 py-2 text-xs text-white">
+                                {message.text}
+                              </p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      {messageError && (
+                        <p role="alert" className="mt-2 text-xs text-amber-200">
+                          {messageError}
+                        </p>
+                      )}
+                      <form onSubmit={sendMessage} className="mt-2 flex gap-2">
+                        <input
+                          value={messageDraft}
+                          onChange={(event) => setMessageDraft(event.target.value)}
+                          placeholder="Write a message..."
+                          aria-label="Write a message to your match"
+                          className="min-w-0 flex-1 rounded-full bg-white/[0.05] px-4 py-2 text-xs text-white placeholder:text-white/40"
+                        />
+                        <button
+                          type="submit"
+                          disabled={!messageDraft.trim() || sendingMessage}
+                          className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-black disabled:opacity-40"
+                        >
+                          Send
+                        </button>
+                      </form>
+                    </div>
                   </div>
                 ) : (
                   <div className="p-6 rounded-2xl bg-[#0c1322] border border-white/5 text-center space-y-1.5">
@@ -256,49 +365,8 @@ export default function ChatsPage() {
                   Past Dates
                 </span>
 
-                <div className="space-y-2">
-                  {[
-                    {
-                      id: "pd1",
-                      name: "Emily",
-                      lastMsg: "It was really nice meeting you at the party!",
-                      time: "Aug 28",
-                      avatar:
-                        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80",
-                    },
-                    {
-                      id: "pd2",
-                      name: "Grace",
-                      lastMsg: "Haha definitely 😂 see you around campus!",
-                      time: "Aug 21",
-                      avatar:
-                        "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=300&auto=format&fit=crop&q=80",
-                    },
-                  ].map((conv) => (
-                    <div
-                      key={conv.id}
-                      className="flex items-center justify-between p-3.5 rounded-2xl bg-[#0c1322] hover:bg-[#111a2c] transition-colors cursor-pointer group border border-white/5"
-                    >
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={conv.avatar}
-                          alt={conv.name}
-                          className="w-11 h-11 rounded-full object-cover"
-                        />
-                        <div>
-                          <span className="font-serif text-sm text-white">
-                            {conv.name}
-                          </span>
-                          <p className="text-xs text-white/50 truncate max-w-[240px] md:max-w-xs mt-0.5">
-                            {conv.lastMsg}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-[10px] text-white/40">{conv.time}</span>
-                      </div>
-                    </div>
-                  ))}
+                <div className="rounded-2xl border border-white/5 bg-[#0c1322] p-4 text-center text-xs text-white/45">
+                  Past conversations appear here when match history is available.
                 </div>
               </div>
             </div>

@@ -23,9 +23,10 @@ import {
 import { useAuthStore } from "@/store/useAuthStore";
 import { APP_CONFIG } from "@/config/app";
 import API from "@/api/client";
-import NotificationModal from "@/components/pwa/NotificationModal";
+import { fetchCurrentMatch } from "@/api/matches";
 import NotificationCenter from "@/components/pwa/NotificationCenter";
 import SupportChatModal from "@/components/pwa/SupportChatModal";
+import PromoBanners from "@/components/ui/PromoBanners";
 
 interface CurrentMatch {
   match_id: string;
@@ -77,19 +78,14 @@ export default function PWAHome() {
     const fetchMatch = async () => {
       try {
         setLoading(true);
-        const res = await API.get("/matches/current");
-        if (res.data?.match) {
-          setMatch(res.data.match);
-        }
-      } catch {
-        // No match yet
+        setMatch(await fetchCurrentMatch<CurrentMatch>(user?.id));
       } finally {
         setLoading(false);
       }
     };
 
     fetchMatch();
-  }, [router]);
+  }, [router, user?.id]);
 
   // Weekly Friday 8:00 AM WAT Countdown calculation
   useEffect(() => {
@@ -141,7 +137,6 @@ export default function PWAHome() {
         <title>{APP_CONFIG.name} | Home</title>
       </Head>
 
-      <NotificationModal />
       <SupportChatModal
         isOpen={supportOpen}
         onClose={() => setSupportOpen(false)}
@@ -224,6 +219,8 @@ export default function PWAHome() {
                   </div>
                 </div>
               )}
+
+              <PromoBanners />
 
               {/* THIS WEEK'S DATE - The Main Card */}
               <section aria-labelledby="main-card-heading" className="space-y-2.5">

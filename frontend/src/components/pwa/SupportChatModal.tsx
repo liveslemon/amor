@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { X, Send, ShieldCheck, MessageCircle, Sparkles } from "lucide-react";
 import { APP_CONFIG } from "@/config/app";
+import API from "@/api/client";
 
 interface Message {
   id: string;
@@ -37,7 +38,9 @@ export default function SupportChatModal({
   ]);
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [sendError, setSendError] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const nextMessageId = useRef(1);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -45,12 +48,12 @@ export default function SupportChatModal({
 
   if (!isOpen) return null;
 
-  const handleSend = (textToSend?: string) => {
+  const handleSend = async (textToSend?: string) => {
     const text = textToSend || inputText.trim();
-    if (!text) return;
+    if (!text || isTyping) return;
 
     const userMsg: Message = {
-      id: Date.now().toString(),
+      id: `user-${nextMessageId.current++}`,
       sender: "user",
       text,
       time: new Date().toLocaleTimeString([], {
@@ -61,38 +64,35 @@ export default function SupportChatModal({
 
     setMessages((prev) => [...prev, userMsg]);
     setInputText("");
+    setSendError("");
     setIsTyping(true);
 
-    // Simulate smart support reply
-    setTimeout(() => {
-      let replyText =
-        "Thanks for reaching out! Our team is reviewing this right now.";
-
-      const lower = text.toLowerCase();
-      if (lower.includes("match") && (lower.includes("showing") || lower.includes("not"))) {
-        replyText =
-          "Minglee matches drop every Friday at 8:00 AM WAT. If you completed onboarding before Thursday midnight, your date will appear on your Home and Dates tabs! If it's still missing, reach out on our direct WhatsApp line.";
-      } else if (lower.includes("account") || lower.includes("profile")) {
-        replyText =
-          "You can update your photos, age, height, and partner preferences anytime under the 'Me' tab. Need a number reset? We can verify your details directly on WhatsApp.";
-      } else if (lower.includes("report")) {
-        replyText =
-          "Your safety is our top priority. You can report any profile under 'Me' > 'Privacy & Safety' > 'Report a User', or provide the user's name right here. Zero harassment is tolerated on Minglee.";
+    try {
+      const response = await API.post("/assistant/chat", { message: text });
+      const replyText = response.data?.reply;
+      if (typeof replyText !== "string" || !replyText.trim()) {
+        throw new Error("The assistant returned an empty response.");
       }
-
-      const botMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        sender: "support",
-        text: replyText,
-        time: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      };
-
-      setMessages((prev) => [...prev, botMsg]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `support-${nextMessageId.current++}`,
+          sender: "support",
+          text: replyText,
+          time: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        },
+      ]);
+    } catch (error) {
+      console.error("Could not send message to Minglee AI:", error);
+      setSendError(
+        "The assistant service is not connected yet. Please use WhatsApp support for now.",
+      );
+    } finally {
       setIsTyping(false);
-    }, 900);
+    }
   };
 
   const handleWhatsAppEscalation = () => {
@@ -118,14 +118,14 @@ export default function SupportChatModal({
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-serif text-base text-white tracking-tight">
-                  Minglee Support
+                  Minglee AI
                 </span>
                 <span className="text-[10px] uppercase font-sans font-medium px-1.5 py-0.5 rounded-full bg-white/10 text-white/70">
                   Official
                 </span>
               </div>
               <p className="text-xs text-white/50 font-sans">
-                Usually replies quickly
+                Your Minglee assistant
               </p>
             </div>
           </div>
@@ -169,6 +169,11 @@ export default function SupportChatModal({
               <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-pulse delay-300" />
             </div>
           )}
+          {sendError && (
+            <p role="alert" className="rounded-xl bg-amber-500/10 p-3 text-xs text-amber-200">
+              {sendError}
+            </p>
+          )}
 
           <div ref={messagesEndRef} />
         </div>
@@ -192,7 +197,7 @@ export default function SupportChatModal({
         <div className="px-4 py-2 bg-[#0a0f1a] border-t border-white/5 flex items-center justify-between text-xs">
           <span className="text-white/60 flex items-center gap-1.5">
             <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
-            Need real-time human assistance?
+            Need human assistance?
           </span>
           <button
             onClick={handleWhatsAppEscalation}
