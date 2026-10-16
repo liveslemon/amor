@@ -71,7 +71,7 @@ const EVENTS_DATA: EventItem[] = [
   },
   {
     id: "evt_003",
-    slug: "minglee-at-wet-wars",
+    slug: "campus-sunset-brunch",
     category: "Social",
     badge: "Campus Mixer",
     title: "CAMPUS SUNSET BRUNCH",
