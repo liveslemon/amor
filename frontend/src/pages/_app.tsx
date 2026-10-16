@@ -42,6 +42,10 @@ export default function App({ Component, pageProps }: AppProps) {
     }
 
     const cleanupHaptics = initGlobalHaptics();
+
+    // Wake up/keep backend warm on app visit
+    API.get("/health").catch(() => {});
+
     return () => {
       cleanupHaptics();
     };
