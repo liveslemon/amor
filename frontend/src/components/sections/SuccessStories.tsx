@@ -120,7 +120,7 @@ export default function SuccessStories() {
                 <p className="text-xs md:text-sm font-medium leading-snug">{item.text}</p>
                 
                 {/* Badge */}
-                <div className="absolute -top-3 -right-3 w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white text-white">
+                <div className="absolute -top-3 -right-3 w-7 h-7 bg-[#FF69B4] rounded-full flex items-center justify-center shadow-md border border-white/20 text-[#000B1A]">
                   {item.icon === 'heart' ? (
                     <Heart className="w-3.5 h-3.5 fill-current" />
                   ) : (

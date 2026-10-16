@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Hero from "@/components/sections/Hero";
@@ -7,10 +11,25 @@ import UpcomingEvents from "@/components/sections/UpcomingEvents";
 import FAQ from "@/components/sections/FAQ";
 import SuccessStories from "@/components/sections/SuccessStories";
 import ZigZagSeparator from "@/components/ui/ZigZagSeparator";
-
 import StickySection from "@/components/layout/StickySection";
+import { useAuthStore } from "@/store/useAuthStore";
 
 export default function Home() {
+  const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const isStandalone = window.matchMedia(
+      "(display-mode: standalone)",
+    ).matches;
+
+    if (!isStandalone) return;
+
+    router.replace(user ? "/home" : "/login");
+  }, [router, user]);
+
   return (
     <main className="relative bg-[#0a0f1a] min-h-screen overflow-x-clip">
       <Navbar />
@@ -45,7 +64,10 @@ export default function Home() {
       </StickySection>
 
       {/* FAQ - KEPT STICKY ON MOBILE */}
-      <StickySection stickyOnMobile className="z-50 shadow-[0_-20px_50px_rgba(0,0,0,0.3)]">
+      <StickySection
+        stickyOnMobile
+        className="z-50 shadow-[0_-20px_50px_rgba(0,0,0,0.3)]"
+      >
         <ZigZagSeparator color="#080d16" height={24} />
         <FAQ />
       </StickySection>

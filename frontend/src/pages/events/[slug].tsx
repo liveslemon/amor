@@ -199,7 +199,7 @@ export default function EventDetailsPage({ event }: Props) {
           if (typeof window !== "undefined") {
             sessionStorage.setItem("returnToEvent", router.asPath);
           }
-          router.push("/registration-complete");
+          router.push("/home");
         }
       }
     } catch (err: any) {
@@ -289,11 +289,11 @@ export default function EventDetailsPage({ event }: Props) {
         <meta name="description" content={event.description} />
       </Head>
 
-      <main className="min-h-screen bg-[#0a0f1a] text-white selection:bg-[#ff5fb8] selection:text-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-12">
+      <main className="min-h-screen bg-[#000B1A] text-white selection:bg-[#ff5fb8] selection:text-white pb-28 md:pb-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 md:pt-24 pb-12">
           {/* Back button */}
           <Link
-            href="/#events"
+            href="/events"
             className="inline-flex items-center gap-2 text-white/70 hover:text-white text-xs sm:text-sm transition-colors py-2 mb-6 md:mb-8 focus-visible:outline-none"
           >
             <ArrowRight className="w-4 h-4 rotate-180" />

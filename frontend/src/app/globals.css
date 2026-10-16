@@ -65,9 +65,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .bg-premium-gradient {
-  background: radial-gradient(circle at top left, rgba(255, 182, 193, 0.15), transparent 40%),
-              radial-gradient(circle at bottom right, rgba(255, 105, 180, 0.1), transparent 40%),
-              var(--background);
+  background: var(--background);
 }
 
 /* Custom animations */

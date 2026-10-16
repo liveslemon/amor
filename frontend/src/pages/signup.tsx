@@ -107,8 +107,8 @@ export default function SignUp() {
             preferred_builds: formData.preferred_builds.length > 0 ? formData.preferred_builds : undefined,
           });
 
-          // Redirect to registration complete since they already provided everything else
-          router.replace("/registration-complete");
+          // Redirect directly to main PWA home dashboard
+          router.replace("/home");
       }
     } catch (err: any) {
       setError(

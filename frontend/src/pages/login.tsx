@@ -32,8 +32,8 @@ export default function Login() {
       if (res.access_token && res.user) {
         setAuth(res.access_token, res.user);
 
-        // Directly route to registration complete
-        router.push("/registration-complete");
+        // Directly route to main PWA home dashboard
+        router.push("/home");
       }
     } catch (err: any) {
       setError(
