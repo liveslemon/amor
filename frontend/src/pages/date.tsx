@@ -23,6 +23,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { APP_CONFIG } from "@/config/app";
 import PromoBanners from "@/components/ui/PromoBanners";
 import NotificationCenter from "@/components/pwa/NotificationCenter";
+import { triggerHaptic } from "@/lib/haptics";
 
 interface PartnerProfile {
   id: string;
@@ -65,6 +66,9 @@ export default function MyDatePage() {
   const [loading, setLoading] = useState(true);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [safetyStatus, setSafetyStatus] = useState("");
+  const [momentFeedback, setMomentFeedback] = useState<string | null>(null);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [feedbackError, setFeedbackError] = useState("");
   const [timeLeft, setTimeLeft] = useState({ days: "00", hours: "00", minutes: "00", seconds: "00" });
 
   useEffect(() => {
@@ -88,6 +92,21 @@ export default function MyDatePage() {
 
     fetchCurrentMatch();
   }, [router, user?.id]);
+
+  const handleMomentVote = async (rating: string) => {
+    if (!matchData) return;
+    triggerHaptic("success");
+    setFeedbackError("");
+    try {
+      await API.post(`/matches/${encodeURIComponent(matchData.match_id)}/feedback`, { rating });
+      setMomentFeedback(rating);
+      setFeedbackSubmitted(true);
+      setTimeout(() => setFeedbackSubmitted(false), 4000);
+    } catch (error) {
+      console.error("Could not submit match feedback:", error);
+      setFeedbackError("Could not save your feedback. Please try again.");
+    }
+  };
 
   // Countdown to next Friday at 8:00 AM WAT
   useEffect(() => {
@@ -174,7 +193,7 @@ export default function MyDatePage() {
       <div className="min-h-screen bg-[#0a0f1a] text-white flex flex-col selection:bg-pink-500/30">
 
         {/* In-App Header */}
-        <header className="sticky top-0 z-40 border-b border-white/5 bg-[#000B1A]">
+        <header className="sticky top-0 md:top-16 md:mt-16 z-30 border-b border-white/5 bg-[#000B1A]">
           <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
             <Link href="/home" className="flex items-center gap-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-white">
@@ -187,7 +206,7 @@ export default function MyDatePage() {
 
             <nav className="flex items-center gap-2 text-sm text-slate-200">
               <Link
-                href="/dates"
+                href="/date"
                 className="rounded-full px-3.5 py-1.5 bg-white/10 text-white font-medium flex items-center gap-1.5"
               >
                 <Sparkles className="w-3.5 h-3.5 text-[#FFB6C1]" />
@@ -214,7 +233,7 @@ export default function MyDatePage() {
           </div>
         </header>
 
-        <main className="flex-1 mx-auto max-w-5xl w-full px-4 py-6 sm:px-6 space-y-6">
+        <main className="flex-1 mx-auto max-w-5xl w-full px-4 pt-6 pb-28 md:pb-10 sm:px-6 space-y-6">
           {/* Dual Promotional Banners */}
           <PromoBanners />
 
@@ -484,6 +503,83 @@ export default function MyDatePage() {
               </div>
             </motion.div>
           )}
+
+          {/* MINGLEE MOMENTS - Post-Date Feedback */}
+          {!loading && matchData && (
+            <div className="rounded-2xl bg-[#0c1322] p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-white/60 flex items-center gap-1.5">
+                  <span className="font-[family-name:var(--font-marker)] text-sm tracking-normal capitalize text-[#FFB6C1] font-normal">Minglee</span>
+                  <span>Moments</span>
+                </span>
+                <span className="text-[10px] text-white/40">Feedback Loop</span>
+              </div>
+              <p className="text-xs text-white/70">
+                How did your date with {matchData.partner.name} go? Your feedback refines future pairings.
+              </p>
+
+              {feedbackSubmitted ? (
+                <div className="p-3 rounded-xl bg-emerald-500/10 text-xs text-emerald-300 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Thank you! Feedback recorded for your next Friday drop.</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300">Good</p>
+                    {[
+                      { key: "loved", label: "❤️ Loved it" },
+                      { key: "nice", label: "🙂 It was nice" },
+                    ].map((btn) => (
+                      <button
+                        key={btn.key}
+                        type="button"
+                        onClick={() => handleMomentVote(btn.key)}
+                        className={`w-full rounded-xl px-3 py-2 text-left text-xs font-medium transition-colors cursor-pointer ${
+                          momentFeedback === btn.key
+                            ? "bg-emerald-500/20 text-white"
+                            : "bg-white/[0.04] text-white/80 hover:bg-white/[0.08]"
+                        }`}
+                      >
+                        {btn.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-rose-300">Could be better</p>
+                    {[
+                      { key: "neutral", label: "😐 Didn't click" },
+                      { key: "uncomfortable", label: "👎 Uncomfortable" },
+                    ].map((btn) => (
+                      <button
+                        key={btn.key}
+                        type="button"
+                        onClick={() => handleMomentVote(btn.key)}
+                        className={`w-full rounded-xl px-3 py-2 text-left text-xs font-medium transition-colors cursor-pointer ${
+                          momentFeedback === btn.key
+                            ? "bg-rose-500/20 text-white"
+                            : "bg-white/[0.04] text-white/80 hover:bg-white/[0.08]"
+                        }`}
+                      >
+                        {btn.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {feedbackError && (
+                <p role="alert" className="text-xs text-amber-200">{feedbackError}</p>
+              )}
+            </div>
+          )}
+
+          {/* PAST DATES ARCHIVE */}
+          <div className="rounded-2xl bg-[#0c1322] p-6 text-center">
+            <p className="font-serif text-xl text-white">Past dates</p>
+            <p className="mt-2 text-sm text-white/50">
+              Past dates will appear here when match history is available.
+            </p>
+          </div>
         </main>
       </div>
     </>

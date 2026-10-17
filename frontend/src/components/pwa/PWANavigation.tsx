@@ -25,7 +25,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { name: "Home", href: "/home", icon: Home },
-  { name: "Dates", href: "/dates", icon: Heart },
+  { name: "Dates", href: "/date", icon: Heart },
   { name: "Chats", href: "/chats", icon: MessageCircle, badge: "1" },
   { name: "Events", href: "/events", icon: CalendarDays },
   { name: "Me", href: "/me", icon: User },
@@ -71,7 +71,6 @@ export default function PWANavigation() {
               const Icon = item.icon;
               const isActive =
                 pathname === item.href ||
-                (item.href === "/dates" && pathname === "/date") ||
                 (item.href !== "/home" && pathname.startsWith(item.href));
 
               return (
@@ -129,7 +128,6 @@ export default function PWANavigation() {
               const Icon = item.icon;
               const isActive =
                 pathname === item.href ||
-                (item.href === "/dates" && pathname === "/date") ||
                 (item.href !== "/home" && pathname.startsWith(item.href));
 
               return (
