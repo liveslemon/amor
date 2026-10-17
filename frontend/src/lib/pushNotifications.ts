@@ -1,7 +1,5 @@
 import API from "@/api/client";
 import axios from "axios";
-import { supabase } from "@/lib/supabase";
-import { useAuthStore } from "@/store/useAuthStore";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -78,55 +76,10 @@ export async function requestAndSubscribePush(): Promise<{ success: boolean; err
           if (subscription) {
             const subJson = subscription.toJSON();
 
-            // 1. Primary: Save directly to Supabase push_subscriptions table
-            // This prevents the browser from triggering a red 404 network error while backend PR is pending
-            let directSaved = false;
-            if (supabase && subJson.endpoint && subJson.keys) {
-              try {
-                let userId = useAuthStore.getState().user?.id;
-                if (!userId) {
-                  const { data: authData } = await supabase.auth.getUser();
-                  userId = authData?.user?.id;
-                }
-
-                if (userId) {
-                  const { error: supaErr } = await supabase
-                    .from("push_subscriptions")
-                    .upsert(
-                      {
-                        user_id: userId,
-                        endpoint: subJson.endpoint,
-                        p256dh: subJson.keys.p256dh,
-                        auth: subJson.keys.auth,
-                        user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
-                        updated_at: new Date().toISOString(),
-                      },
-                      { onConflict: "endpoint" }
-                    );
-
-                  if (!supaErr) {
-                    directSaved = true;
-                  }
-                }
-              } catch {
-                // Ignore direct write failure and attempt backend sync below
-              }
-            }
-
-            // 2. If not saved directly to Supabase, attempt backend sync with graceful 404 handling
-            if (!directSaved) {
-              try {
-                await API.post("/notifications/subscribe", {
-                  subscription: subJson,
-                });
-              } catch (apiErr: any) {
-                const is404 =
-                  axios.isAxiosError(apiErr) && apiErr.response?.status === 404;
-                if (!is404) {
-                  throw apiErr;
-                }
-              }
-            }
+            // The backend derives the user from the JWT and saves with the service role.
+            await API.post("/notifications/subscribe", {
+              subscription: subJson,
+            });
 
             localStorage.setItem("minglee-push-enabled", "true");
             localStorage.setItem("minglee-push-sub", JSON.stringify(subJson));
