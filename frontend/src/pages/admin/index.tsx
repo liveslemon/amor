@@ -128,6 +128,30 @@ interface RecentMatch {
   created_at: string;
 }
 
+// Backend errors come back as { error, details } (validation details from zod);
+// some endpoints use message or reason instead.
+type ApiErrorBody = {
+  error?: string;
+  message?: string;
+  reason?: string;
+  details?: { formErrors?: string[]; fieldErrors?: Record<string, string[]> };
+};
+
+function adminErrorText(err: unknown, fallback: string): string {
+  const e = err as { message?: string; response?: { data?: ApiErrorBody } } | undefined;
+  const data = e?.response?.data;
+  if (!data) return e?.message ? `${fallback} (${e.message})` : fallback;
+  const base = data.reason || data.message || data.error || fallback;
+  const details = data.details;
+  const problems = [
+    ...(details?.formErrors ?? []),
+    ...Object.entries(details?.fieldErrors ?? {}).map(
+      ([field, msgs]) => `${field}: ${msgs.join(", ")}`,
+    ),
+  ];
+  return problems.length ? `${base} (${problems.join("; ")})` : base;
+}
+
 export default function AdminPage() {
   const [adminSecret, setAdminSecret] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -204,6 +228,13 @@ export default function AdminPage() {
       }
     } catch (err: any) {
       console.warn("Admin fetch failed:", err);
+      const status = err.response?.status;
+      if (status === 401 || status === 503) {
+        // Wrong secret, or ADMIN_SECRET isn't set on the server.
+        localStorage.removeItem("minglee-admin-key");
+        setIsAuthenticated(false);
+      }
+      setActionMessage({ type: "error", text: adminErrorText(err, "Could not load admin data") });
     } finally {
       setLoading(false);
     }
@@ -237,9 +268,9 @@ export default function AdminPage() {
       }
     } catch (err: any) {
       const errMsg =
-        err.response?.data?.reason ||
-        err.response?.data?.message ||
-        (err.response?.status === 409 ? "Clashing of dates with another advert" : "Review action failed");
+        err.response?.status === 409 && !err.response?.data?.reason
+          ? "Clashing of dates with another advert"
+          : adminErrorText(err, "Review action failed");
       setActionMessage({ type: "error", text: errMsg });
     }
   };
@@ -262,7 +293,7 @@ export default function AdminPage() {
         loadAllData(adminSecret);
       }
     } catch (err: any) {
-      setActionMessage({ type: "error", text: "Ticket review failed" });
+      setActionMessage({ type: "error", text: adminErrorText(err, "Ticket review failed") });
     }
   };
 
@@ -281,7 +312,7 @@ export default function AdminPage() {
         loadAllData(adminSecret);
       }
     } catch (err: any) {
-      setActionMessage({ type: "error", text: "Could not unflag user profile." });
+      setActionMessage({ type: "error", text: adminErrorText(err, "Could not unflag user profile.") });
     }
   };
 
@@ -315,7 +346,7 @@ export default function AdminPage() {
     } catch (err: any) {
       setActionMessage({
         type: "error",
-        text: err.response?.data?.message || "Failed to dispatch notification.",
+        text: adminErrorText(err, "Failed to dispatch notification."),
       });
     } finally {
       setSendingPush(false);
@@ -339,11 +370,11 @@ export default function AdminPage() {
 
       setActionMessage({
         type: "success",
-        text: "Matching cycle complete! Pairings generated and verified.",
+        text: res.data?.message || "Matching cycle complete.",
       });
       loadAllData(adminSecret);
     } catch (err: any) {
-      setActionMessage({ type: "error", text: "Matching cycle failed" });
+      setActionMessage({ type: "error", text: adminErrorText(err, "Matching cycle failed") });
     } finally {
       setRunningMatch(false);
     }
