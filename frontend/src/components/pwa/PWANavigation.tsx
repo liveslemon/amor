@@ -35,7 +35,8 @@ export default function PWANavigation() {
   const pathname = usePathname() || "";
   const user = useAuthStore((state) => state.user);
 
-  // Hide navigation on landing, login, signup, and legal reading pages
+  // Hide navigation on landing, login, signup, and legal reading pages, and on
+  // the admin console, which has its own header (the fixed desktop bar covered it).
   const isAuthOrLanding =
     pathname === "/" ||
     pathname === "/Landing" ||
@@ -43,7 +44,8 @@ export default function PWANavigation() {
     pathname === "/signup" ||
     pathname === "/registration-complete" ||
     pathname === "/terms" ||
-    pathname === "/privacy";
+    pathname === "/privacy" ||
+    pathname.startsWith("/admin");
 
   if (isAuthOrLanding) return null;
 

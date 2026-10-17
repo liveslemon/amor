@@ -382,7 +382,7 @@ export default function BusinessPage() {
 
       <div className="min-h-screen bg-[#000B1A] text-white selection:bg-[#FFB6C1] selection:text-[#000B1A]">
         {/* Header Bar */}
-        <header className="border-b border-white/10 bg-[#0a0f1a]/90 backdrop-blur-md sticky top-0 z-40">
+        <header className="border-b border-white/10 bg-[#0a0f1a]/90 backdrop-blur-md sticky top-0 md:top-16 z-30 md:mt-16">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
             <div className="flex items-center gap-3">
               <Link
