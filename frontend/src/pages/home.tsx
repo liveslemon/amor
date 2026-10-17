@@ -284,7 +284,7 @@ export default function PWAHome() {
                       </div>
 
                       <Link
-                        href="/dates"
+                        href="/date"
                         className="w-full flex items-center justify-center gap-2 rounded-full bg-white text-black py-3 sm:py-3.5 text-sm font-semibold hover:bg-white/90 transition-all active:scale-95"
                       >
                         <span>View My Date Dossier</span>
@@ -338,7 +338,7 @@ export default function PWAHome() {
                       </div>
 
                       <Link
-                        href="/dates"
+                        href="/date"
                         className="w-full max-w-sm flex items-center justify-center gap-2 rounded-full bg-white/10 hover:bg-white/15 text-white py-3 text-sm font-medium transition-colors active:scale-95 mt-1"
                       >
                         <span>View Match Schedule</span>
@@ -396,7 +396,7 @@ export default function PWAHome() {
                     <span>Matches arrive every Friday at 8:00 AM</span>
                   </div>
                   <Link
-                    href="/dates"
+                    href="/date"
                     className="text-[#FFB6C1] hover:underline font-medium"
                   >
                     Learn more

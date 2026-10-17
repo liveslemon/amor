@@ -295,7 +295,7 @@ export default function ChatsPage() {
                         <span>Open WhatsApp Chat</span>
                       </button>
                       <Link
-                        href="/dates"
+                        href="/date"
                         className="flex items-center justify-center px-5 rounded-full bg-white/10 hover:bg-white/15 text-white text-xs font-medium transition-colors"
                       >
                         View Dossier

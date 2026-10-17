@@ -82,7 +82,7 @@ export function PWAAppShell({ children }: PWAAppShellProps) {
                 </Link>
 
                 <Link
-                  href="/dates"
+                  href="/date"
                   className={`rounded-full px-3.5 py-2 transition flex items-center gap-1.5 ${
                     safePathname.startsWith("/date")
                       ? "bg-white/10 text-white font-medium"
