@@ -57,12 +57,29 @@ interface EventRecord {
   attendee_count?: number;
 }
 
+type ApiErrorBody = {
+  message?: string;
+  error?: string;
+  reason?: string;
+  details?: { formErrors?: string[]; fieldErrors?: Record<string, string[]> };
+};
+
+// Validation failures come back as { error: "Invalid input", details }; include
+// the field-level messages so the user knows what to fix.
 function getRequestErrorMessage(error: unknown, fallback: string) {
-  if (axios.isAxiosError<{ message?: string; error?: string; reason?: string }>(error)) {
-    return error.response?.data?.reason || error.response?.data?.message || error.response?.data?.error || fallback;
+  if (axios.isAxiosError<ApiErrorBody>(error)) {
+    const data = error.response?.data;
+    const base = data?.reason || data?.message || data?.error || fallback;
+    const problems = [
+      ...(data?.details?.formErrors ?? []),
+      ...Object.values(data?.details?.fieldErrors ?? {}).flat(),
+    ];
+    return problems.length ? `${base}: ${problems.join("; ")}` : base;
   }
   return error instanceof Error ? error.message : fallback;
 }
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default function BusinessPage() {
   const user = useAuthStore((state) => state.user);
@@ -265,13 +282,19 @@ export default function BusinessPage() {
       const nextDate = new Date(new Date(scheduledDate).getTime() + 24 * 60 * 60 * 1000);
       const endTime = nextDate.toISOString();
 
+      // The "Link to Popup" field accepts a popup UUID or an internal route; the
+      // API only takes a UUID in popup_id, so a route becomes the target_url.
+      const popupLink = popupId.trim();
+      const linkedPopupId = UUID_PATTERN.test(popupLink) ? popupLink : null;
+      const linkedRoute = popupLink && !linkedPopupId ? popupLink : "";
+
       const payload = {
         ad_type: adType,
         title: title.trim() || (adType === "notification" ? "Notification Promotion" : "Banner Spotlight"),
         text_content: textContent.trim(),
         image_url: uploadedImages[0] || null,
-        target_url: targetUrl.trim() || (boostEventId ? `/events/${boostEventId}` : "/date"),
-        popup_id: popupId.trim() || null,
+        target_url: targetUrl.trim() || linkedRoute || (boostEventId ? `/events/${boostEventId}` : "/date"),
+        popup_id: linkedPopupId,
         event_id: boostEventId || null,
         scheduled_date: scheduledDate,
         start_time: startTime,
