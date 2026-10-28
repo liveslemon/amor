@@ -28,6 +28,7 @@ import { APP_CONFIG } from "@/config/app";
 import API from "@/api/client";
 import { fetchCurrentMatch } from "@/api/matches";
 import {
+  deletePhoto,
   savePhotos,
   savePreferences,
   savePreferredBuilds,
@@ -67,10 +68,12 @@ export default function MePage() {
   const [reportSuccess, setReportSuccess] = useState(false);
   const [reportError, setReportError] = useState("");
   const [profilePhotos, setProfilePhotos] = useState<
-    Array<{ image_url: string; photo_type?: string; upload_order: number }>
+    Array<{ id?: string; image_url: string; photo_type?: string; upload_order: number }>
   >([]);
+  const [brokenPhotoIndexes, setBrokenPhotoIndexes] = useState<Set<number>>(new Set());
   const [photoStatus, setPhotoStatus] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -105,6 +108,7 @@ export default function MePage() {
           setConflictStyle(res.data.profile.conflict_style);
         }
         setProfilePhotos((res.data?.photos || []).slice(0, 2));
+        setBrokenPhotoIndexes(new Set());
       } catch (err) {
         console.warn("Could not load user profile:", err);
       }
@@ -189,8 +193,9 @@ export default function MePage() {
           upload_order: profilePhotos.length + 1,
         },
       ];
-      await savePhotos(nextPhotos);
-      setProfilePhotos(nextPhotos);
+      const saved = await savePhotos(nextPhotos);
+      setProfilePhotos(saved.photos || nextPhotos);
+      setBrokenPhotoIndexes(new Set());
       setPhotoStatus("Photo uploaded and saved.");
     } catch (error) {
       console.error("Could not upload profile photo:", error);
@@ -202,6 +207,31 @@ export default function MePage() {
       setPhotoStatus(message || "Photo upload failed. Please try again.");
     } finally {
       setUploadingPhoto(false);
+    }
+  };
+
+  const handleDeletePhoto = async (index: number) => {
+    const photo = profilePhotos[index];
+    if (!photo?.id || deletingPhotoId) return;
+    if (!window.confirm("Remove this photo?")) return;
+
+    setDeletingPhotoId(photo.id);
+    setPhotoStatus("");
+    try {
+      await deletePhoto(photo.id);
+      setProfilePhotos((prev) => prev.filter((_, i) => i !== index));
+      setBrokenPhotoIndexes(new Set());
+      setPhotoStatus("Photo removed.");
+    } catch (error) {
+      console.error("Could not delete profile photo:", error);
+      const message = axios.isAxiosError<{ error?: string }>(error)
+        ? error.response?.data?.error || error.message
+        : error instanceof Error
+          ? error.message
+          : null;
+      setPhotoStatus(message || "Could not remove photo. Please try again.");
+    } finally {
+      setDeletingPhotoId(null);
     }
   };
 
@@ -321,16 +351,35 @@ export default function MePage() {
                   {[0, 1].map((index) => (
                     <div
                       key={index}
-                      className="flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-white/[0.04]"
+                      className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-white/[0.04]"
                     >
-                      {profilePhotos[index] ? (
+                      {profilePhotos[index] && !brokenPhotoIndexes.has(index) ? (
                         <img
                           src={profilePhotos[index].image_url}
                           alt={`Profile photo ${index + 1}`}
                           className="h-full w-full object-cover"
+                          onError={() =>
+                            setBrokenPhotoIndexes((prev) => new Set(prev).add(index))
+                          }
                         />
+                      ) : profilePhotos[index] ? (
+                        <div className="flex flex-col items-center gap-1 px-2 text-center">
+                          <AlertCircle className="h-5 w-5 text-white/30" />
+                          <span className="text-[10px] text-white/35">Photo unavailable</span>
+                        </div>
                       ) : (
                         <Camera className="h-6 w-6 text-white/25" />
+                      )}
+                      {profilePhotos[index]?.id && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePhoto(index)}
+                          disabled={deletingPhotoId === profilePhotos[index].id}
+                          aria-label={`Remove profile photo ${index + 1}`}
+                          className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white/80 hover:bg-red-500 hover:text-white transition-colors disabled:opacity-40 cursor-pointer"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
                       )}
                     </div>
                   ))}
