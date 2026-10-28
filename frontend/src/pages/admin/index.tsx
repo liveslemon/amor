@@ -97,6 +97,8 @@ interface FlaggedUser {
   role: string;
   is_flagged: boolean;
   flag_reason?: string;
+  open_report_count?: number;
+  open_report_reasons?: string[];
   created_at: string;
   user_profiles?: {
     gender?: string;
@@ -818,28 +820,48 @@ export default function AdminPage() {
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="font-serif text-xl text-white">{u.name}</h3>
-                            <span className="rounded-full bg-red-500/20 border border-red-500/30 px-2 py-0.5 text-[10px] font-semibold text-red-300">
-                              FLAGGED
-                            </span>
+                            {u.is_flagged && (
+                              <span className="rounded-full bg-red-500/20 border border-red-500/30 px-2 py-0.5 text-[10px] font-semibold text-red-300">
+                                FLAGGED
+                              </span>
+                            )}
+                            {!!u.open_report_count && (
+                              <span className="rounded-full bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+                                {u.open_report_count} OPEN REPORT{u.open_report_count === 1 ? "" : "S"}
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs text-white/40 mt-1">
                             WhatsApp: {u.whatsapp_number} · User ID: {u.id.slice(0, 8)}...
                           </p>
-                          <p className="text-xs text-red-200 mt-2 bg-red-500/10 p-2.5 rounded-lg border border-red-500/20">
-                            Reason: {u.flag_reason || "Reported for community policy review"}
-                          </p>
+                          {u.is_flagged && (
+                            <p className="text-xs text-red-200 mt-2 bg-red-500/10 p-2.5 rounded-lg border border-red-500/20">
+                              Flag reason: {u.flag_reason || "Flagged by administrator"}
+                            </p>
+                          )}
+                          {!!u.open_report_reasons?.length && (
+                            <p className="text-xs text-amber-200 mt-2 bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20">
+                              Reported for: {u.open_report_reasons.join(", ")}
+                            </p>
+                          )}
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleUnflagUser(u.id)}
-                          className="h-9 px-4 rounded-full bg-emerald-500/20 hover:bg-emerald-500 text-emerald-200 hover:text-black font-semibold text-xs transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
-                        >
-                          <UserCheck className="w-3.5 h-3.5" />
-                          Clear Flag
-                        </button>
+                        {u.is_flagged ? (
+                          <button
+                            type="button"
+                            onClick={() => handleUnflagUser(u.id)}
+                            className="h-9 px-4 rounded-full bg-emerald-500/20 hover:bg-emerald-500 text-emerald-200 hover:text-black font-semibold text-xs transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
+                          >
+                            <UserCheck className="w-3.5 h-3.5" />
+                            Clear Flag
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-white/30 shrink-0 max-w-[9rem] text-right">
+                            Not admin-flagged. Reports stay listed until resolved.
+                          </span>
+                        )}
                       </div>
 
                       {/* Profile Photos (Downscaled, strictly max 2 images) */}

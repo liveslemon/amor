@@ -116,7 +116,10 @@ export default function MePage() {
   useEffect(() => {
     const fetchPartner = async () => {
       try {
-        const match = await fetchCurrentMatch<{ partner?: { id: string; name: string } }>(user?.id);
+        const match = await fetchCurrentMatch<{
+          match_id?: string;
+          partner?: { id: string; name: string };
+        }>(user?.id);
         setCurrentPartner(match?.partner ? { id: match.partner.id, name: match.partner.name } : null);
       } catch (err) {
         console.warn("Could not load current match for reporting:", err);
