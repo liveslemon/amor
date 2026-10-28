@@ -22,7 +22,6 @@ const permanentMarker = Permanent_Marker({
 
 import React, { useEffect } from "react";
 import PWANavigation from "@/components/pwa/PWANavigation";
-import AIAssistantBubble from "@/components/pwa/AIAssistantBubble";
 import NotificationModal from "@/components/pwa/NotificationModal";
 import NotificationPopup from "@/components/pwa/NotificationPopup";
 import { initGlobalHaptics } from "@/lib/haptics";
@@ -80,7 +79,6 @@ export default function App({ Component, pageProps }: AppProps) {
       </Head>
       <Component {...pageProps} />
       <PWANavigation />
-      <AIAssistantBubble />
       <NotificationModal />
       <NotificationPopup />
     </div>

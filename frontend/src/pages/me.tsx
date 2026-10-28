@@ -9,7 +9,6 @@ import {
   User,
   Heart,
   ShieldCheck,
-  Bell,
   Camera,
   Briefcase,
   MessageSquare,
@@ -27,6 +26,7 @@ import {
 import { useAuthStore } from "@/store/useAuthStore";
 import { APP_CONFIG } from "@/config/app";
 import API from "@/api/client";
+import { fetchCurrentMatch } from "@/api/matches";
 import {
   savePhotos,
   savePreferences,
@@ -42,7 +42,7 @@ export default function MePage() {
   const logout = useAuthStore((state) => state.logout);
 
   const [activeModal, setActiveModal] = useState<
-    "preferences" | "privacy" | "whatsapp" | "notifications" | "report" | null
+    "preferences" | "privacy" | "whatsapp" | "report" | null
   >(null);
 
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
@@ -58,10 +58,12 @@ export default function MePage() {
   const [relationshipGoal, setRelationshipGoal] = useState("Long-term");
   const [conflictStyle, setConflictStyle] = useState("Talk it out immediately");
 
-  // Report Modal State
+  // Report Modal State. Members have no way to look up another user's ID, so
+  // reporting is only offered for the current Friday match, whose partner ID
+  // we already have from /matches/current.
   const [reportReason, setReportReason] = useState("Harassment");
   const [reportDetails, setReportDetails] = useState("");
-  const [reportTargetId, setReportTargetId] = useState("");
+  const [currentPartner, setCurrentPartner] = useState<{ id: string; name: string } | null>(null);
   const [reportSuccess, setReportSuccess] = useState(false);
   const [reportError, setReportError] = useState("");
   const [profilePhotos, setProfilePhotos] = useState<
@@ -110,6 +112,18 @@ export default function MePage() {
 
     fetchUserPreferences();
   }, [router]);
+
+  useEffect(() => {
+    const fetchPartner = async () => {
+      try {
+        const match = await fetchCurrentMatch<{ partner?: { id: string; name: string } }>(user?.id);
+        setCurrentPartner(match?.partner ? { id: match.partner.id, name: match.partner.name } : null);
+      } catch (err) {
+        console.warn("Could not load current match for reporting:", err);
+      }
+    };
+    fetchPartner();
+  }, [user?.id]);
 
   const handleToggleBuild = (b: string) => {
     setBuilds((prev) =>
@@ -190,10 +204,11 @@ export default function MePage() {
 
   const handleReportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentPartner) return;
     setReportError("");
     try {
       await API.post("/reports", {
-        reported_user_id: reportTargetId || undefined,
+        reported_user_id: currentPartner.id,
         reason: reportReason,
         details: reportDetails,
       });
@@ -202,7 +217,6 @@ export default function MePage() {
         setReportSuccess(false);
         setActiveModal(null);
         setReportDetails("");
-        setReportTargetId("");
       }, 2000);
     } catch (error) {
       console.error("Could not submit user report:", error);
@@ -216,9 +230,7 @@ export default function MePage() {
   };
 
   const handleTestWhatsApp = () => {
-    const text = encodeURIComponent(
-      "Hi Minglee! This is a test confirmation from my profile settings."
-    );
+    const text = encodeURIComponent("Hi Minglee! I need some help.");
     window.open(
       `https://wa.me/${APP_CONFIG.whatsappNumber.replace("+", "")}?text=${text}`,
       "_blank"
@@ -448,28 +460,6 @@ export default function MePage() {
                         <span className="w-2 h-2 rounded-full bg-emerald-400" />
                       </div>
                       <p className="text-xs text-white/40">{displayPhone}</p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-white/40" />
-                </button>
-
-                {/* Notifications */}
-                <button
-                  type="button"
-                  onClick={() => setActiveModal("notifications")}
-                  className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors text-left cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-9 h-9 rounded-full bg-white/10 text-white/80">
-                      <Bell className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-sm font-medium text-white">
-                        Notifications
-                      </span>
-                      <p className="text-xs text-white/40">
-                        Friday drop timing, alerts
-                      </p>
                     </div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-white/40" />
@@ -771,14 +761,18 @@ export default function MePage() {
 
                 <div className="space-y-1">
                   <label className="text-xs font-semibold uppercase tracking-wider text-white/60">
-                    Member ID
+                    Reporting
                   </label>
-                  <input
-                    value={reportTargetId}
-                    onChange={(event) => setReportTargetId(event.target.value)}
-                    placeholder="ID of the user to report"
-                    className="w-full rounded-xl bg-white/[0.04] p-2.5 text-xs text-white placeholder-white/40"
-                  />
+                  {currentPartner ? (
+                    <div className="w-full rounded-xl bg-white/[0.04] p-2.5 text-xs text-white">
+                      {currentPartner.name} (your current Friday match)
+                    </div>
+                  ) : (
+                    <p className="text-xs text-white/50 leading-relaxed">
+                      You don&apos;t have an active match to report right now. Once you&apos;re
+                      paired, you can report or block them from the date page.
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -789,7 +783,7 @@ export default function MePage() {
                     rows={3}
                     value={reportDetails}
                     onChange={(e) => setReportDetails(e.target.value)}
-                    placeholder="Provide details or the user's name/number..."
+                    placeholder="Describe what happened..."
                     className="w-full rounded-xl bg-white/[0.04] p-2.5 text-xs text-white placeholder-white/40 focus:outline-none"
                   />
                 </div>
@@ -802,7 +796,8 @@ export default function MePage() {
 
                 <button
                   type="submit"
-                  className="w-full rounded-full bg-red-600 hover:bg-red-500 text-white py-2.5 text-xs font-semibold transition-colors cursor-pointer"
+                  disabled={!currentPartner}
+                  className="w-full rounded-full bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white py-2.5 text-xs font-semibold transition-colors cursor-pointer"
                 >
                   Submit Confidential Report
                 </button>
@@ -835,7 +830,8 @@ export default function MePage() {
               <p className="text-base font-serif text-white">{displayPhone}</p>
               <p className="text-[11px] text-white/60 pt-1">
                 Your WhatsApp number is only used for Minglee match handoffs and
-                critical notifications.
+                critical notifications. Need help? Message Minglee support directly
+                on WhatsApp below.
               </p>
             </div>
 
@@ -844,42 +840,12 @@ export default function MePage() {
               onClick={handleTestWhatsApp}
               className="w-full rounded-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 text-xs font-semibold transition-colors cursor-pointer"
             >
-              Send Test Message
+              Message Minglee on WhatsApp
             </button>
           </div>
         </div>
       )}
 
-      {/* MODAL 5: NOTIFICATIONS */}
-      {activeModal === "notifications" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
-          <div className="w-full max-w-md rounded-2xl bg-[#0c1322] p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-white/5 pb-3">
-              <h3 className="font-serif text-lg text-white">Notifications</h3>
-              <button
-                onClick={() => setActiveModal(null)}
-                className="text-white/50 hover:text-white cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="rounded-xl bg-white/[0.04] p-4 text-sm text-white/75">
-              Minglee notifications are required for match drops and important
-              account updates. You can manage browser permission in your device
-              settings.
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setActiveModal(null)}
-              className="w-full rounded-full bg-white/10 hover:bg-white/15 text-white py-2.5 text-xs font-semibold transition-colors mt-2 cursor-pointer"
-            >
-              Done
-            </button>
-          </div>
-        </div>
-      )}
     </>
   );
 }

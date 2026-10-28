@@ -4,20 +4,11 @@ import React, { useState, useEffect } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import {
-  Search,
-  ShieldCheck,
-  Heart,
-  MessageCircle,
-  ExternalLink,
-  ChevronRight,
-  Sparkles,
-} from "lucide-react";
+import { Search, Heart, MessageCircle } from "lucide-react";
 import API from "@/api/client";
 import { fetchCurrentMatch } from "@/api/matches";
 import { useAuthStore } from "@/store/useAuthStore";
 import { APP_CONFIG } from "@/config/app";
-import SupportChatModal from "@/components/pwa/SupportChatModal";
 
 interface CurrentMatch {
   match_id: string;
@@ -41,7 +32,6 @@ export default function ChatsPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [match, setMatch] = useState<CurrentMatch | null>(null);
-  const [supportOpen, setSupportOpen] = useState(false);
   const [messages, setMessages] = useState<MatchMessage[]>([]);
   const [messageDraft, setMessageDraft] = useState("");
   const [messageError, setMessageError] = useState("");
@@ -139,11 +129,6 @@ export default function ChatsPage() {
         <title>{APP_CONFIG.name} | Chats</title>
       </Head>
 
-      <SupportChatModal
-        isOpen={supportOpen}
-        onClose={() => setSupportOpen(false)}
-      />
-
       <div className="min-h-screen bg-[#000B1A] text-[#F8F9FA] pb-28">
         {/* Mobile Header */}
         <header className="md:hidden sticky top-0 z-30 bg-[#000B1A] border-b border-white/5 px-4 py-3.5">
@@ -190,63 +175,8 @@ export default function ChatsPage() {
             />
           </div>
 
-          {/* Responsive Layout: 2 Columns on Desktop */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-            {/* Left Column: Official Support & Safety */}
-            <div className="md:col-span-5 space-y-4">
-              <div className="space-y-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40 px-1">
-                  Official Channels
-                </span>
-
-                <div
-                  onClick={() => setSupportOpen(true)}
-                  className="flex items-center justify-between p-4 rounded-2xl bg-[#0c1322] hover:bg-[#111a2c] transition-colors cursor-pointer group border border-white/5"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="relative flex items-center justify-center w-12 h-12 rounded-full bg-white/5 text-[#FFB6C1]">
-                      <ShieldCheck className="w-6 h-6" />
-                      <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-serif text-base text-white flex items-center gap-1">
-                          <span className="font-[family-name:var(--font-marker)] text-base font-normal text-white">Minglee</span>
-                          <span>Support</span>
-                        </span>
-                        <span className="text-[9px] font-sans font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/10 text-white/80">
-                          Concierge
-                        </span>
-                      </div>
-                      <p className="text-xs text-white/70 mt-0.5">
-                        Need help? We&apos;re here • 24/7 assistance
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white/10 text-[10px] font-bold text-white px-1">
-                      1
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Secure Communication Info Card */}
-              <div className="p-4 rounded-2xl bg-[#0c1322] border border-white/5 space-y-2">
-                <div className="flex items-center gap-2 text-white/80">
-                  <ShieldCheck className="w-4 h-4 text-[#FFB6C1]" />
-                  <span className="text-xs font-medium">Safe & Direct Connection</span>
-                </div>
-                <p className="text-[11px] leading-relaxed text-white/50">
-                  Minglee protects your privacy. Official matches are connected directly via end-to-end encrypted WhatsApp channels once mutually introduced.
-                </p>
-              </div>
-            </div>
-
-            {/* Right Column: Current Date & Past Dates */}
-            <div className="md:col-span-7 space-y-5">
+          {/* Current Date & Past Dates */}
+          <div className="max-w-2xl space-y-5">
               {/* CURRENT DATE CHAT */}
               <div className="space-y-2">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40 px-1">
@@ -370,7 +300,6 @@ export default function ChatsPage() {
                 </div>
               </div>
             </div>
-          </div>
         </main>
       </div>
     </>

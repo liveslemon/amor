@@ -10,10 +10,7 @@ import {
   Sparkles,
   Calendar,
   MessageCircle,
-  Clock3,
-  ShieldCheck,
   ChevronRight,
-  Bell,
   Settings,
   Flame,
   ArrowRight,
@@ -25,7 +22,6 @@ import { APP_CONFIG } from "@/config/app";
 import API from "@/api/client";
 import { fetchCurrentMatch } from "@/api/matches";
 import NotificationCenter from "@/components/pwa/NotificationCenter";
-import SupportChatModal from "@/components/pwa/SupportChatModal";
 import PromoBanners from "@/components/ui/PromoBanners";
 
 interface CurrentMatch {
@@ -53,7 +49,6 @@ export default function PWAHome() {
 
   const [match, setMatch] = useState<CurrentMatch | null>(null);
   const [loading, setLoading] = useState(true);
-  const [supportOpen, setSupportOpen] = useState(false);
   const [countdown, setCountdown] = useState({
     days: "00",
     hours: "00",
@@ -136,11 +131,6 @@ export default function PWAHome() {
       <Head>
         <title>{APP_CONFIG.name} | Home</title>
       </Head>
-
-      <SupportChatModal
-        isOpen={supportOpen}
-        onClose={() => setSupportOpen(false)}
-      />
 
       <div className="min-h-screen bg-[#000B1A] text-[#F8F9FA] pb-28 md:pb-16">
         {/* Mobile-only Top App Header (Desktop uses PWANavigation top navbar) */}
@@ -349,60 +339,6 @@ export default function PWAHome() {
                 )}
               </section>
 
-              {/* YOUR WEEK - Weekly Rhythm Timeline */}
-              <section className="rounded-2xl bg-[#0c1322] p-5 space-y-3.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-white/60 font-sans">
-                    Your Week
-                  </span>
-                  <span className="text-xs text-white/40 font-sans">
-                    Weekly Rhythm
-                  </span>
-                </div>
-
-                {/* Mon - Fri Track */}
-                <div className="grid grid-cols-5 gap-2 pt-1">
-                  {[
-                    { day: "MON", label: "Preferences" },
-                    { day: "TUE", label: "Discovery" },
-                    { day: "WED", label: "Events" },
-                    { day: "THU", label: "Prep" },
-                    { day: "FRI", label: "Match", isMatch: true },
-                  ].map((item) => (
-                    <div
-                      key={item.day}
-                      className={`flex flex-col items-center justify-center py-3 rounded-xl transition-colors ${
-                        item.isMatch
-                          ? "bg-white/10 text-[#FFB6C1]"
-                          : "bg-white/[0.03] text-white/70"
-                      }`}
-                    >
-                      <span className="text-xs sm:text-sm font-bold font-sans">
-                        {item.day}
-                      </span>
-                      <span className="text-[10px] text-white/40 mt-0.5 truncate px-1">
-                        {item.label}
-                      </span>
-                      {item.isMatch && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#FFB6C1] mt-1.5" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs text-white/60 font-sans">
-                  <div className="flex items-center gap-2">
-                    <Clock3 className="w-3.5 h-3.5 text-[#FFB6C1]" />
-                    <span>Matches arrive every Friday at 8:00 AM</span>
-                  </div>
-                  <Link
-                    href="/date"
-                    className="text-[#FFB6C1] hover:underline font-medium"
-                  >
-                    Learn more
-                  </Link>
-                </div>
-              </section>
             </div>
 
             {/* ─── RIGHT COLUMN: Conversations & Events (5 cols on lg) ─── */}
@@ -457,36 +393,11 @@ export default function PWAHome() {
                       </div>
                       <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
                     </Link>
-                  ) : null}
-
-                  {/* Minglee Official Support Row */}
-                  <button
-                    type="button"
-                    onClick={() => setSupportOpen(true)}
-                    className="w-full flex items-center justify-between p-4 rounded-2xl bg-[#0c1322] hover:bg-[#111a2c] transition-colors group text-left cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3.5">
-                      <div className="relative flex items-center justify-center w-12 h-12 rounded-full bg-white/5 text-[#FFB6C1]">
-                        <ShieldCheck className="w-6 h-6" />
-                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-sm sm:text-base font-medium text-white flex items-center gap-1">
-                            <span className="font-[family-name:var(--font-marker)] text-base font-normal text-white">Minglee</span>
-                            <span>Support</span>
-                          </span>
-                          <span className="text-[10px] bg-white/10 text-white/70 px-1.5 py-0.2 rounded-full font-medium">
-                            Verified
-                          </span>
-                        </div>
-                        <p className="text-xs text-white/50 mt-0.5">
-                          Need help or safety assistance? Tap to chat
-                        </p>
-                      </div>
+                  ) : (
+                    <div className="rounded-2xl bg-[#0c1322] p-4 text-center text-xs text-white/40">
+                      Your next Friday match chat will appear right here.
                     </div>
-                    <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
-                  </button>
+                  )}
                 </div>
               </section>
 
@@ -536,20 +447,6 @@ export default function PWAHome() {
                   </div>
                 </div>
               </section>
-
-              {/* Members-Only Guarantee Card */}
-              <div className="rounded-2xl bg-white/[0.02] p-5 space-y-2 text-xs text-white/60">
-                <div className="flex items-center gap-2 text-white font-medium">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span className="flex items-center gap-1.5">
-                    <span className="font-[family-name:var(--font-marker)] text-sm font-normal text-white">Minglee</span>
-                    <span>Private Circle</span>
-                  </span>
-                </div>
-                <p className="leading-relaxed text-white/50">
-                  Every Minglee member is authenticated with active campus credentials. Matches drop every Friday at 8:00 AM WAT.
-                </p>
-              </div>
             </div>
           </div>
         </main>

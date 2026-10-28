@@ -35,74 +35,14 @@ export type EventRegistrationPayload = {
 
 /**
  * Register a user as an attendee for an event.
- * Inserts into `event_attendees` table (if Supabase configured) and calls backend API.
+ *
+ * Writes go through the backend only: RLS now only grants anon/public reads
+ * on `event_attendees`, not inserts, and the backend derives the user from
+ * the JWT rather than trusting a client-supplied user_id.
  */
 export const registerForEvent = async (data: EventRegistrationPayload) => {
-  const userId = data.user_id || data.user?.id;
-  const eventId = data.event_id;
-
-  let backendResult: any = null;
-  let supabaseResult: any = null;
-
-  // 1. Direct Supabase insertion into `event_attendees` (if Supabase is configured)
-  if (supabase && userId && eventId) {
-    try {
-      const { data: insertedData, error: insertErr } = await supabase
-        .from("event_attendees")
-        .insert({
-          event_id: eventId,
-          user_id: userId,
-        })
-        .select();
-
-      if (!insertErr && insertedData) {
-        supabaseResult = insertedData;
-      } else if (insertErr) {
-        // Fallback for pluralized table name if applicable
-        const { data: fallbackData, error: fallbackErr } = await supabase
-          .from("events_attendees")
-          .insert({
-            event_id: eventId,
-            user_id: userId,
-          })
-          .select();
-
-        if (!fallbackErr && fallbackData) {
-          supabaseResult = fallbackData;
-        } else {
-          console.warn("Supabase attendee insert error:", insertErr.message || fallbackErr?.message);
-        }
-      }
-    } catch (sbErr) {
-      console.warn("Supabase insert exception:", sbErr);
-    }
-  }
-
-  // 2. Also notify the backend REST API
-  try {
-    const backendPayload = {
-      event_id: eventId,
-    };
-    
-    console.log("SENDING PAYLOAD TO BACKEND:", backendPayload);
-
-    const res = await API.post("/events/register", backendPayload);
-    backendResult = res.data;
-  } catch (apiErr: any) {
-    console.warn("Backend /events/register endpoint note:", apiErr.response?.data || apiErr.message);
-    if (!supabaseResult) {
-      throw apiErr;
-    }
-  }
-
-  if (!supabaseResult && !backendResult) {
-    throw new Error("Unable to register attendance. Please try again.");
-  }
-
-  return (
-    backendResult ||
-    supabaseResult
-  );
+  const res = await API.post("/events/register", { event_id: data.event_id });
+  return res.data;
 };
 
 /**

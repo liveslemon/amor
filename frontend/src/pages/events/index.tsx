@@ -15,21 +15,7 @@ import {
   Flame,
 } from "lucide-react";
 import { APP_CONFIG } from "@/config/app";
-
-interface EventItem {
-  id: string;
-  slug: string;
-  category: string;
-  badge: string;
-  title: string;
-  date: string;
-  time: string;
-  location: string;
-  price: string;
-  vibe: string;
-  image: string;
-  attendeesCount: number;
-}
+import { getUpcomingLocalEvents } from "@/data/localEvents";
 
 const CATEGORIES = [
   "All",
@@ -40,56 +26,13 @@ const CATEGORIES = [
   "🏀 Sports",
 ];
 
-const EVENTS_DATA: EventItem[] = [
-  {
-    id: "123e4567-e89b-12d3-a456-426614174001",
-    slug: "minglee-at-wet-wars",
-    category: "Party",
-    badge: "Selling Fast",
-    title: "WET WARS 2.0",
-    date: "28th & 29th August 2026",
-    time: "9:00 PM",
-    location: "Unilag Guest House, Akoka",
-    price: "From NGN 3,500",
-    vibe: "High-Energy • Amapiano • Fun",
-    image: "/assets/wet-wars.jpeg",
-    attendeesCount: 142,
-  },
-  {
-    id: "evt_002",
-    slug: "rave-district",
-    category: "Date-Friendly",
-    badge: "Limited Seats",
-    title: "RAVE DISTRICT",
-    date: "27th August 2026",
-    time: "9:00 PM",
-    location: "Unilag Guest House, Akoka",
-    price: "From NGN 4,000",
-    vibe: "Warm • Intimate • Conversational",
-    image: "/assets/rave-district.jpeg",
-    attendeesCount: 98,
-  },
-  {
-    id: "evt_003",
-    slug: "campus-sunset-brunch",
-    category: "Social",
-    badge: "Campus Mixer",
-    title: "CAMPUS SUNSET BRUNCH",
-    date: "5th September 2026",
-    time: "4:00 PM",
-    location: "PAU Main Terrace, Ibeju-Lekki",
-    price: "From NGN 2,500",
-    vibe: "Cocktails • Good Music • Chill",
-    image: "/match-poster.png",
-    attendeesCount: 76,
-  },
-];
-
 export default function EventsIndexPage() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredEvents = EVENTS_DATA.filter((event) => {
+  const upcomingEvents = getUpcomingLocalEvents();
+
+  const filteredEvents = upcomingEvents.filter((event) => {
     const matchesCat =
       selectedCategory === "All" ||
       selectedCategory.toLowerCase().includes(event.category.toLowerCase());
@@ -162,6 +105,14 @@ export default function EventsIndexPage() {
           </div>
 
           {/* Event Cards Grid */}
+          {filteredEvents.length === 0 ? (
+            <div className="rounded-2xl bg-[#0c1322] border border-white/5 p-10 text-center space-y-1.5">
+              <p className="text-sm text-white/70">No events available right now.</p>
+              <p className="text-xs text-white/40">
+                Check back soon — new campus events drop regularly.
+              </p>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 pt-1">
             {filteredEvents.map((evt) => (
               <Link
@@ -225,6 +176,7 @@ export default function EventsIndexPage() {
               </Link>
             ))}
           </div>
+          )}
         </main>
       </div>
     </>
