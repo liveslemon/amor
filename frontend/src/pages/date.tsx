@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Flame,
   UserCheck,
+  Settings,
 } from "lucide-react";
 import API from "@/api/client";
 import { fetchCurrentMatch as fetchCurrentMatchData } from "@/api/matches";
@@ -60,7 +61,6 @@ interface MatchData {
 export default function MyDatePage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const logout = useAuthStore((state) => state.logout);
 
   const [matchData, setMatchData] = useState<MatchData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -192,48 +192,29 @@ export default function MyDatePage() {
 
       <div className="min-h-screen bg-[#0a0f1a] text-white flex flex-col selection:bg-pink-500/30">
 
-        {/* In-App Header */}
-        <header className="sticky top-0 md:top-16 md:mt-16 z-30 border-b border-white/5 bg-[#000B1A]">
-          <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
-            <Link href="/home" className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-white">
-                <Heart className="h-4 w-4 text-[#FFB6C1]" />
-              </div>
-              <span className="text-lg font-semibold tracking-[0.14em] font-serif">
-                {APP_CONFIG.name.toUpperCase()}
+        {/* Mobile-only Top App Header (Desktop uses PWANavigation top navbar) */}
+        <header className="md:hidden sticky top-0 z-30 bg-[#000B1A] border-b border-white/5 px-4 py-3">
+          <div className="max-w-md mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="font-[family-name:var(--font-marker)] text-2xl tracking-wide text-white">
+                {APP_CONFIG.name}
               </span>
-            </Link>
-
-            <nav className="flex items-center gap-2 text-sm text-slate-200">
-              <Link
-                href="/date"
-                className="rounded-full px-3.5 py-1.5 bg-white/10 text-white font-medium flex items-center gap-1.5"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-[#FFB6C1]" />
-                <span>My Date</span>
-              </Link>
-              <Link
-                href="/events"
-                className="rounded-full px-3.5 py-1.5 hover:bg-white/5 transition-colors"
-              >
-                Events
-              </Link>
+              <span className="w-1.5 h-1.5 rounded-full bg-[#FFB6C1]" />
+            </div>
+            <div className="flex items-center gap-1">
               <NotificationCenter />
-              <button
-                type="button"
-                onClick={() => {
-                  logout();
-                  window.location.href = "/login";
-                }}
-                className="text-xs text-white/50 hover:text-white px-2 py-1 transition-colors cursor-pointer"
+              <Link
+                href="/me"
+                aria-label="Settings"
+                className="flex items-center justify-center w-9 h-9 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors"
               >
-                Log Out
-              </button>
-            </nav>
+                <Settings className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
         </header>
 
-        <main className="flex-1 mx-auto max-w-5xl w-full px-4 pt-6 pb-28 md:pb-10 sm:px-6 space-y-6">
+        <main className="flex-1 mx-auto max-w-5xl w-full px-4 pt-6 md:pt-24 pb-28 md:pb-10 sm:px-6 space-y-6">
           {/* Dual Promotional Banners */}
           <PromoBanners />
 

@@ -15,6 +15,7 @@ import {
 import { APP_CONFIG } from "@/config/app";
 import { useAuthStore } from "@/store/useAuthStore";
 import NotificationCenter from "@/components/pwa/NotificationCenter";
+import { hasUpcomingLocalEvents } from "@/data/localEvents";
 
 interface NavItem {
   name: string;
@@ -23,7 +24,7 @@ interface NavItem {
   badge?: number | string;
 }
 
-const NAV_ITEMS: NavItem[] = [
+const BASE_NAV_ITEMS: NavItem[] = [
   { name: "Home", href: "/home", icon: Home },
   { name: "Dates", href: "/date", icon: Heart },
   { name: "Chats", href: "/chats", icon: MessageCircle, badge: "1" },
@@ -34,6 +35,9 @@ const NAV_ITEMS: NavItem[] = [
 export default function PWANavigation() {
   const pathname = usePathname() || "";
   const user = useAuthStore((state) => state.user);
+  const NAV_ITEMS = hasUpcomingLocalEvents()
+    ? BASE_NAV_ITEMS
+    : BASE_NAV_ITEMS.filter((item) => item.name !== "Events");
 
   // Hide navigation on landing, login, signup, and legal reading pages, and on
   // the admin console, which has its own header (the fixed desktop bar covered it).

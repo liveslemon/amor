@@ -29,76 +29,7 @@ import {
   getEventBySlug,
 } from "@/api/events";
 import { useAuthStore } from "@/store/useAuthStore";
-
-// ─── Canonical local event catalogue ───────────────────────────────────────
-// Mirrors the EVENTS_DATA in /events/index.tsx so slugs always resolve.
-type LocalEvent = {
-  id: string;
-  slug: string;
-  category: string;
-  badge: string;
-  title: string;
-  date: string;
-  time: string;
-  location: string;
-  price: string;
-  vibe: string;
-  image: string;
-  attendeesCount: number;
-  description: string;
-  ticketUrl?: string;
-};
-
-const LOCAL_EVENTS: LocalEvent[] = [
-  {
-    id: "123e4567-e89b-12d3-a456-426614174001",
-    slug: "minglee-at-wet-wars",
-    category: "Party",
-    badge: "Selling Fast",
-    title: "WET WARS 2.0",
-    date: "28th & 29th August 2026",
-    time: "9:00 PM",
-    location: "Unilag Guest House, Akoka",
-    price: "From NGN 3,500",
-    vibe: "High-Energy • Amapiano • Fun",
-    image: "/assets/wet-wars.jpeg",
-    attendeesCount: 142,
-    description:
-      "WET WARS 2.0 is back — bigger, wetter, and wilder than ever. Join hundreds of Lagos students and young professionals for the most talked-about summer party of 2026. Expect non-stop Amapiano, water games, and an electric crowd. Dress to get soaked and come ready to have the night of your life.",
-  },
-  {
-    id: "evt_002",
-    slug: "rave-district",
-    category: "Date-Friendly",
-    badge: "Limited Seats",
-    title: "RAVE DISTRICT",
-    date: "27th August 2026",
-    time: "9:00 PM",
-    location: "Unilag Guest House, Akoka",
-    price: "From NGN 4,000",
-    vibe: "Warm • Intimate • Conversational",
-    image: "/assets/rave-district.jpeg",
-    attendeesCount: 98,
-    description:
-      "RAVE DISTRICT is the perfect evening for those who want more than just a party. A carefully curated date-friendly event designed to spark real connections in a warm, intimate atmosphere. Think deep cuts on the decks, low lighting, great company, and conversations worth having.",
-  },
-  {
-    id: "evt_003",
-    slug: "campus-sunset-brunch",
-    category: "Social",
-    badge: "Campus Mixer",
-    title: "CAMPUS SUNSET BRUNCH",
-    date: "5th September 2026",
-    time: "4:00 PM",
-    location: "PAU Main Terrace, Ibeju-Lekki",
-    price: "From NGN 2,500",
-    vibe: "Cocktails • Good Music • Chill",
-    image: "/match-poster.png",
-    attendeesCount: 76,
-    description:
-      "A golden-hour social mixer on the PAU terrace. Cocktails, curated playlist, bites, and the kind of crowd that actually wants to meet new people. Whether you're coming solo or with friends, Campus Sunset Brunch is your mid-semester reset — easy, fun, and full of good vibes.",
-  },
-];
+import { LOCAL_EVENTS, isEventExpired } from "@/data/localEvents";
 
 type EventData = {
   id: string;
@@ -165,7 +96,7 @@ export default function EventDetailsPage() {
       }
 
       const local = LOCAL_EVENTS.find((e) => e.slug === slug);
-      if (local) {
+      if (local && !isEventExpired(local)) {
         setEvent(local);
       }
       setPageLoading(false);
