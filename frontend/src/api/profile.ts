@@ -61,3 +61,8 @@ export const getMe = async () => {
   const res = await API.get("/me/profile");
   return res.data;
 };
+
+export const deletePhoto = async (photoId: string) => {
+  const res = await API.delete(`/photos/${encodeURIComponent(photoId)}`);
+  return res.data;
+};
