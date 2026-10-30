@@ -60,8 +60,9 @@ export default function Login() {
         <div className="absolute top-8 left-8 z-20">
           <Link
             href="/"
-            className="font-serif text-2xl tracking-[0.15em] font-medium text-white hover:opacity-80 transition-opacity"
+            className="flex items-center gap-2 font-serif text-2xl tracking-[0.15em] font-medium text-white hover:opacity-80 transition-opacity"
           >
+            <img src="/logo-mark.png" alt="" className="h-7 w-7" />
             {APP_CONFIG.name.toUpperCase()}
           </Link>
         </div>
