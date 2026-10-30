@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Heart, LogOut, User, Sparkles } from "lucide-react";
+import { LogOut, User, Sparkles } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import NotificationModal from "./NotificationModal";
 import NotificationCenter from "./NotificationCenter";
@@ -59,9 +59,7 @@ export function PWAAppShell({ children }: PWAAppShellProps) {
       <header className="sticky top-0 z-40 border-b border-white/5 bg-[#000B1A]">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
           <Link href={user ? "/home" : "/login"} className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-white">
-              <Heart className="h-4 w-4 text-[#FFB6C1]" />
-            </div>
+            <img src="/logo-mark.png" alt="" className="h-8 w-8" />
             <span className="text-xl font-normal tracking-wide font-[family-name:var(--font-marker)]">
               {APP_CONFIG.name}
             </span>

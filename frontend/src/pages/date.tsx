@@ -196,10 +196,10 @@ export default function MyDatePage() {
         <header className="md:hidden sticky top-0 z-30 bg-[#000B1A] border-b border-white/5 px-4 py-3">
           <div className="max-w-md mx-auto flex items-center justify-between">
             <div className="flex items-center gap-2">
+              <img src="/logo-mark.png" alt="" className="h-7 w-7" />
               <span className="font-[family-name:var(--font-marker)] text-2xl tracking-wide text-white">
                 {APP_CONFIG.name}
               </span>
-              <span className="w-1.5 h-1.5 rounded-full bg-[#FFB6C1]" />
             </div>
             <div className="flex items-center gap-1">
               <NotificationCenter />

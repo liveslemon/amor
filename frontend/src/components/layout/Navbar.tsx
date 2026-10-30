@@ -36,7 +36,8 @@ export default function Navbar() {
     >
       <div className="w-full max-w-7xl relative z-50 flex items-center justify-between transition-all duration-300 bg-transparent px-6 py-4 md:px-12 md:py-8">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 group">
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <img src="/logo-mark.png" alt="" className="h-8 w-8" />
           <span className="font-serif text-2xl tracking-[0.15em] font-medium text-white select-none">
             {APP_CONFIG.name.toUpperCase()}
           </span>
