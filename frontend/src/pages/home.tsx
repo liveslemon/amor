@@ -19,8 +19,8 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { APP_CONFIG } from "@/config/app";
-import API from "@/api/client";
 import { fetchCurrentMatch } from "@/api/matches";
+import { fetchUpcomingEvents, DbEvent } from "@/api/events";
 import NotificationCenter from "@/components/pwa/NotificationCenter";
 import PromoBanners from "@/components/ui/PromoBanners";
 
@@ -49,6 +49,7 @@ export default function PWAHome() {
 
   const [match, setMatch] = useState<CurrentMatch | null>(null);
   const [loading, setLoading] = useState(true);
+  const [nearbyEvent, setNearbyEvent] = useState<DbEvent | null>(null);
   const [countdown, setCountdown] = useState({
     days: "00",
     hours: "00",
@@ -81,6 +82,20 @@ export default function PWAHome() {
 
     fetchMatch();
   }, [router, user?.id]);
+
+  // Pull the nearest upcoming, approved event from the DB for the "Near You" card
+  useEffect(() => {
+    const fetchNearbyEvent = async () => {
+      try {
+        const upcoming = await fetchUpcomingEvents();
+        setNearbyEvent(upcoming[0] ?? null);
+      } catch {
+        setNearbyEvent(null);
+      }
+    };
+
+    fetchNearbyEvent();
+  }, []);
 
   // Weekly Friday 8:00 AM WAT Countdown calculation
   useEffect(() => {
@@ -402,51 +417,56 @@ export default function PWAHome() {
               </section>
 
               {/* NEAR YOU / CAMPUS EVENTS HIGHLIGHT */}
-              <section className="space-y-2.5">
-                <div className="flex items-center justify-between px-0.5">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-white/60 font-sans">
-                    Near You • Events
-                  </span>
-                  <Link
-                    href="/events"
-                    className="text-xs font-medium text-[#FFB6C1] hover:underline font-sans"
-                  >
-                    Explore all
-                  </Link>
-                </div>
-
-                <div className="rounded-2xl bg-[#0c1322] p-5 space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/10 text-[#FFB6C1]">
-                          Selling Fast
-                        </span>
-                        <span className="text-[10px] text-white/50">Pool Party</span>
-                      </div>
-                      <h3 className="font-serif text-xl text-white mt-1">
-                        WET WARS 2.0
-                      </h3>
-                      <p className="text-xs text-white/50 mt-0.5">
-                        Unilag Guest House, Akoka • 9:00 PM
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                    <div className="flex items-center gap-1.5 text-xs text-white/60">
-                      <Users className="w-3.5 h-3.5 text-[#FFB6C1]" />
-                      <span>142 Minglee users attending</span>
-                    </div>
+              {nearbyEvent && (
+                <section className="space-y-2.5">
+                  <div className="flex items-center justify-between px-0.5">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-white/60 font-sans">
+                      Near You • Events
+                    </span>
                     <Link
-                      href="/events/minglee-at-wet-wars"
-                      className="text-xs font-medium bg-white/10 hover:bg-white/15 text-white px-4 py-2 rounded-full transition-colors"
+                      href="/events"
+                      className="text-xs font-medium text-[#FFB6C1] hover:underline font-sans"
                     >
-                      View Event →
+                      Explore all
                     </Link>
                   </div>
-                </div>
-              </section>
+
+                  <div className="rounded-2xl bg-[#0c1322] p-5 space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/10 text-[#FFB6C1]">
+                            {nearbyEvent.ticket_type}
+                          </span>
+                        </div>
+                        <h3 className="font-serif text-xl text-white mt-1">
+                          {nearbyEvent.event_name}
+                        </h3>
+                        <p className="text-xs text-white/50 mt-0.5">
+                          {nearbyEvent.location} •{" "}
+                          {new Date(nearbyEvent.event_day).toLocaleDateString(
+                            "en-US",
+                            { month: "short", day: "numeric" }
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                      <div className="flex items-center gap-1.5 text-xs text-white/60">
+                        <Users className="w-3.5 h-3.5 text-[#FFB6C1]" />
+                        <span>{nearbyEvent.attendee_count} Minglee users attending</span>
+                      </div>
+                      <Link
+                        href={`/events/${nearbyEvent.id}`}
+                        className="text-xs font-medium bg-white/10 hover:bg-white/15 text-white px-4 py-2 rounded-full transition-colors"
+                      >
+                        View Event →
+                      </Link>
+                    </div>
+                  </div>
+                </section>
+              )}
             </div>
           </div>
         </main>

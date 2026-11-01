@@ -24,6 +24,7 @@ import React, { useEffect } from "react";
 import PWANavigation from "@/components/pwa/PWANavigation";
 import NotificationModal from "@/components/pwa/NotificationModal";
 import NotificationPopup from "@/components/pwa/NotificationPopup";
+import NotificationToast from "@/components/pwa/NotificationToast";
 import { initGlobalHaptics } from "@/lib/haptics";
 import API from "@/api/client";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -81,6 +82,7 @@ export default function App({ Component, pageProps }: AppProps) {
       <PWANavigation />
       <NotificationModal />
       <NotificationPopup />
+      <NotificationToast />
     </div>
   );
 }

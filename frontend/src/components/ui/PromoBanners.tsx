@@ -54,11 +54,15 @@ interface PromoBannersProps {
   className?: string;
 }
 
+// Keeps the carousel from growing without bound as new ads queue in.
+const MAX_BANNERS = 6;
+
 export default function PromoBanners({ className = "" }: PromoBannersProps) {
   const [banners, setBanners] = useState<Promo[]>(DEFAULT_PROMOS);
   const [activeIndex, setActiveIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
   const seenAds = useRef(new Set<string>());
+  const resetScrollRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -82,7 +86,18 @@ export default function PromoBanners({ className = "" }: PromoBannersProps) {
           icon: <Sparkles className="h-5 w-5 text-[#FFB6C1]" />,
           external: /^https?:\/\//i.test(ad.target_url || ""),
         }));
-        setBanners(liveBanners);
+
+        // New ads join the FRONT of the existing queue instead of replacing it,
+        // so whatever is already showing keeps its place.
+        setBanners((prev) => {
+          const existingIds = new Set(prev.map((banner) => banner.id));
+          const freshBanners = liveBanners.filter(
+            (banner) => !existingIds.has(banner.id),
+          );
+          if (freshBanners.length === 0) return prev;
+          return [...freshBanners, ...prev].slice(0, MAX_BANNERS);
+        });
+        resetScrollRef.current = true;
         setActiveIndex(0);
       })
       .catch((error) => {
@@ -93,6 +108,14 @@ export default function PromoBanners({ className = "" }: PromoBannersProps) {
       active = false;
     };
   }, []);
+
+  // Snap the carousel back to the start once new ads have been queued in at
+  // the front, so the newest promotion is what's actually in view.
+  useEffect(() => {
+    if (!resetScrollRef.current) return;
+    resetScrollRef.current = false;
+    carouselRef.current?.scrollTo({ left: 0, behavior: "smooth" });
+  }, [banners]);
 
   useEffect(() => {
     const activeBanner = banners[activeIndex];
