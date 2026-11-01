@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-10-16T20:44:48.344Z",
-  "totalExecutionDurationMs": 20,
+  "timestamp": "2026-10-16T21:34:06.016Z",
+  "totalExecutionDurationMs": 28,
   "agentsCount": 5,
   "agentResults": {
     "designLanguageAgent": {
@@ -22,7 +22,7 @@
       "aiAestheticTokens": [],
       "colorRestraintIssues": [],
       "recommendations": [],
-      "durationMs": 20,
+      "durationMs": 28,
       "totalFilesScanned": 68,
       "summary": "Scanned 68 files. Found 0 glow patterns, 2 heavy border styles, and 0 synthetic gradient tokens."
     },
@@ -89,7 +89,7 @@
         }
       },
       "gapsIdentified": [],
-      "durationMs": 4
+      "durationMs": 10
     },
     "ticketManagerAgent": {
       "agent": "Ticket Manager & Events Agent",
@@ -128,7 +128,7 @@
         }
       },
       "gapsIdentified": [],
-      "durationMs": 4
+      "durationMs": 10
     },
     "adminPlatformAgent": {
       "agent": "Admin Platform, Telemetry & Moderation Agent",
@@ -160,7 +160,7 @@
         "hasAestheticGlows": false
       },
       "gapsIdentified": [],
-      "durationMs": 3
+      "durationMs": 8
     },
     "imagePipelineAgent": {
       "agent": "Media & Image Pipeline Agent",
@@ -192,7 +192,7 @@
         }
       },
       "gapsIdentified": [],
-      "durationMs": 3
+      "durationMs": 9
     }
   }
 }

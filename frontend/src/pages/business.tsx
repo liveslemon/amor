@@ -205,6 +205,20 @@ export default function BusinessPage() {
     };
   }, [adType, scheduledDate]);
 
+  // Retries on dropped connections (e.g. the free-tier backend waking from sleep)
+  // but not on real server responses like validation or auth errors.
+  const uploadImageWithRetry = async (formData: FormData, retries = 2, delayMs = 4000) => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await API.post("/ads/upload", formData);
+      } catch (err) {
+        const isNetworkError = axios.isAxiosError(err) && !err.response;
+        if (!isNetworkError || attempt >= retries) throw err;
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+  };
+
   // Handle ad media upload (strict max 2 images, high-quality downscale)
   const handleAdImageUpload = async (file?: File) => {
     if (!file) return;
@@ -221,7 +235,7 @@ export default function BusinessPage() {
       const optimized = await optimizeImage(file, 1600, 0.92);
       const formData = new FormData();
       formData.append("file", optimized);
-      const response = await API.post("/ads/upload", formData);
+      const response = await uploadImageWithRetry(formData);
       const url = response.data?.data?.image_url;
       if (!url) throw new Error("Image upload did not return a valid URL.");
 
@@ -250,7 +264,7 @@ export default function BusinessPage() {
       const optimized = await optimizeImage(file, 1600, 0.92);
       const formData = new FormData();
       formData.append("file", optimized);
-      const response = await API.post("/ads/upload", formData);
+      const response = await uploadImageWithRetry(formData);
       const url = response.data?.data?.image_url;
       if (!url) throw new Error("Image upload did not return a valid URL.");
 
@@ -285,6 +299,11 @@ export default function BusinessPage() {
       return;
     }
 
+    if (adType === "ticket_boost" && !boostEventId) {
+      setError("Select an event to boost.");
+      return;
+    }
+
     try {
       const startTime = `${scheduledDate}T00:00:00Z`;
       // End time minimum 24 hours
@@ -310,7 +329,14 @@ export default function BusinessPage() {
         end_time: endTime,
         start_date: startTime,
         end_date: endTime,
-        placement: adType === "popup" ? "popup" : "home-banner",
+        placement:
+          adType === "popup"
+            ? "popup"
+            : adType === "notification"
+              ? "notification"
+              : adType === "ticket_boost"
+                ? "ticket-boost"
+                : "home-banner",
       };
 
       const res = await API.post("/ads", payload);
@@ -673,6 +699,31 @@ export default function BusinessPage() {
                         />
                         <p className="text-[11px] text-white/40 mt-1">
                           Clicking this notification will open the connected popup modal dialog for users.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Ticket boost-specific: which event gets pinned to the top */}
+                    {adType === "ticket_boost" && (
+                      <div>
+                        <label className="block text-xs text-white/70 mb-1 font-medium">
+                          Event to Boost
+                        </label>
+                        <select
+                          required
+                          value={boostEventId}
+                          onChange={(e) => setBoostEventId(e.target.value)}
+                          className="w-full rounded-xl border border-white/10 bg-[#0a0f1a] p-3 text-sm text-white focus:outline-none focus:border-[#FFB6C1]"
+                        >
+                          <option value="">Select an event...</option>
+                          {events.map((ev) => (
+                            <option key={ev.id} value={ev.id}>
+                              {ev.event_name}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-[11px] text-white/40 mt-1">
+                          This event is pinned to the top of the campus events list with a &ldquo;Promoted&rdquo; badge for the ad&rsquo;s duration.
                         </p>
                       </div>
                     )}

@@ -9,7 +9,6 @@ import {
   ArrowLeft,
   CalendarDays,
   CheckCircle2,
-  Clock3,
   Loader2,
   MapPin,
   Ticket,
@@ -26,38 +25,21 @@ import { getMe, completeOnboarding } from "@/api/profile";
 import {
   checkIsUserAttending,
   registerForEvent,
-  getEventBySlug,
+  getEventById,
+  getEventImageUrl,
+  DbEvent,
 } from "@/api/events";
 import { useAuthStore } from "@/store/useAuthStore";
-import { LOCAL_EVENTS, isEventExpired } from "@/data/localEvents";
-
-type EventData = {
-  id: string;
-  slug: string;
-  title: string;
-  description: string;
-  date: string;
-  time: string;
-  location: string;
-  price: string;
-  image: string;
-  category: string;
-  vibe?: string;
-  badge?: string;
-  attendeesCount?: number;
-  ticketUrl?: string;
-  [key: string]: any;
-};
 
 // ─── Page Component ──────────────────────────────────────────────────────────
 export default function EventDetailsPage() {
   const router = useRouter();
-  const { slug } = router.query;
+  const { id } = router.query;
 
   const currentUser = useAuthStore((state) => state.user);
   const setAuth = useAuthStore((state) => state.setAuth);
 
-  const [event, setEvent] = useState<EventData | null>(null);
+  const [event, setEvent] = useState<DbEvent | null>(null);
   const [pageLoading, setPageLoading] = useState(true);
 
   const [mode, setMode] = useState<"initial" | "login" | "signup">("initial");
@@ -78,43 +60,37 @@ export default function EventDetailsPage() {
     relationship_goal: "", conflict_style: "", instagram: "", tiktok: "",
   });
 
-  // ── Load event: Supabase first, fallback to local catalogue ──────────────
+  // ── Load event from the DB ────────────────────────────────────────────────
   useEffect(() => {
-    if (!slug || typeof slug !== "string") return;
+    if (!id || typeof id !== "string") return;
 
     const load = async () => {
       setPageLoading(true);
       try {
-        const remote = await getEventBySlug(slug);
-        if (remote) {
-          setEvent(remote);
-          setPageLoading(false);
-          return;
-        }
+        const remote = await getEventById(id);
+        setEvent(
+          remote && remote.status === "approved" ? remote : null
+        );
       } catch {
-        // fallthrough to local
+        setEvent(null);
+      } finally {
+        setPageLoading(false);
       }
-
-      const local = LOCAL_EVENTS.find((e) => e.slug === slug);
-      if (local && !isEventExpired(local)) {
-        setEvent(local);
-      }
-      setPageLoading(false);
     };
 
     load();
-  }, [slug]);
+  }, [id]);
 
   // ── Check attendance for logged-in user ──────────────────────────────────
   useEffect(() => {
     if (currentUser?.id && event?.id) {
       checkIsUserAttending(event.id, currentUser.id).then((isAttending) => {
         if (isAttending) {
-          setSuccess(`You're already on the guestlist for ${event.title}!`);
+          setSuccess(`You're already on the guestlist for ${event.event_name}!`);
         }
       });
     }
-  }, [currentUser?.id, event?.id, event?.title]);
+  }, [currentUser?.id, event?.id, event?.event_name]);
 
   // ── Registration helpers ─────────────────────────────────────────────────
   const submitRegistration = async (
@@ -125,8 +101,7 @@ export default function EventDetailsPage() {
     await registerForEvent({
       event_id: event.id,
       user_id: user?.id,
-      event_slug: event.slug,
-      event_name: event.title,
+      event_name: event.event_name,
       status: "attending",
       attendance_status: "going",
       is_attending: true,
@@ -154,12 +129,7 @@ export default function EventDetailsPage() {
       } catch { /* no-op */ }
     }
 
-    if (event.ticketUrl) {
-      window.location.href = event.ticketUrl;
-      return;
-    }
-
-    setSuccess(`RSVP Confirmed! We've recorded that you're going to ${event.title}.`);
+    setSuccess(`RSVP Confirmed! We've recorded that you're going to ${event.event_name}.`);
     setError("");
   };
 
@@ -287,14 +257,23 @@ export default function EventDetailsPage() {
     );
   }
 
-  const attendeesCount = event.attendeesCount ?? 0;
-  const vibe = event.vibe ?? event.category;
+  const attendeesCount = event.attendee_count ?? 0;
+  const eventDate = new Date(event.event_day).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+  const entryFee =
+    Number(event.ticket_price) > 0
+      ? `From NGN ${Number(event.ticket_price).toLocaleString()}`
+      : "Free";
 
   return (
     <>
       <Head>
-        <title>{`${event.title} | ${APP_CONFIG.name}`}</title>
-        <meta name="description" content={event.description} />
+        <title>{`${event.event_name} | ${APP_CONFIG.name}`}</title>
+        <meta name="description" content={event.event_description} />
       </Head>
 
       <main className="min-h-screen bg-[#000B1A] text-white selection:bg-[#FFB6C1]/30 pb-28 md:pb-16">
@@ -323,16 +302,16 @@ export default function EventDetailsPage() {
               {/* Hero image */}
               <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03] shadow-2xl">
                 <img
-                  src={event.image}
-                  alt={event.title}
+                  src={getEventImageUrl(event.event_picture)}
+                  alt={event.event_name}
                   className="w-full h-auto object-contain block"
                 />
                 {/* Gradient overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#000B1A]/60 via-transparent to-transparent pointer-events-none" />
 
-                {/* Category badge */}
+                {/* Ticket type badge */}
                 <span className="absolute top-4 left-4 rounded-full border border-white/15 bg-black/60 backdrop-blur-sm px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-white/80 font-medium">
-                  {event.category}
+                  {event.ticket_type}
                 </span>
 
                 {/* Attendees pill */}
@@ -344,29 +323,23 @@ export default function EventDetailsPage() {
                 )}
               </div>
 
-              {/* Vibe tag + Title + Description */}
+              {/* Title + Description */}
               <div className="space-y-3">
-                {vibe && (
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-[#FFB6C1] font-semibold">
-                    {vibe}
-                  </span>
-                )}
                 <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl tracking-tight text-white leading-tight">
-                  {event.title}
+                  {event.event_name}
                 </h1>
-                {event.description && (
+                {event.event_description && (
                   <p className="text-sm sm:text-[15px] text-white/65 leading-relaxed max-w-2xl">
-                    {event.description}
+                    {event.event_description}
                   </p>
                 )}
               </div>
 
               {/* Detail pills grid */}
               <div className="grid grid-cols-2 gap-3">
-                <DetailPill icon={CalendarDays} label="Date" value={event.date} />
-                <DetailPill icon={Clock3} label="Time" value={event.time} />
+                <DetailPill icon={CalendarDays} label="Date" value={eventDate} />
                 <DetailPill icon={MapPin} label="Location" value={event.location} />
-                <DetailPill icon={Ticket} label="Entry Fee" value={event.price} />
+                <DetailPill icon={Ticket} label="Entry Fee" value={entryFee} />
               </div>
 
               {/* Share row */}
@@ -374,7 +347,7 @@ export default function EventDetailsPage() {
                 type="button"
                 onClick={() => {
                   if (typeof navigator !== "undefined" && navigator.share) {
-                    navigator.share({ title: event.title, url: window.location.href }).catch(() => {});
+                    navigator.share({ title: event.event_name, url: window.location.href }).catch(() => {});
                   } else if (typeof navigator !== "undefined") {
                     navigator.clipboard?.writeText(window.location.href);
                   }
@@ -410,7 +383,7 @@ export default function EventDetailsPage() {
                 <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-4 flex items-center justify-between gap-4">
                   <div>
                     <span className="text-[10px] text-white/40 uppercase tracking-wider block mb-0.5">Entry Fee</span>
-                    <span className="text-lg sm:text-xl font-serif text-white">{event.price}</span>
+                    <span className="text-lg sm:text-xl font-serif text-white">{entryFee}</span>
                   </div>
                   <span className="rounded-full bg-white/[0.07] px-3 py-1 text-[11px] text-white/60 font-medium border border-white/[0.05]">
                     Pay at venue

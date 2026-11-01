@@ -7,6 +7,21 @@ export interface EventAttendeeRecord {
   created_at?: string;
 }
 
+export interface DbEvent {
+  id: string;
+  event_name: string;
+  event_description: string;
+  ticket_type: string;
+  location: string;
+  status: string;
+  event_picture: string;
+  event_day: string;
+  ticket_price: number;
+  created_at: string | null;
+  is_boosted: boolean;
+  attendee_count: number;
+}
+
 export type EventRegistrationPayload = {
   event_id: string;
   user_id?: string;
@@ -48,13 +63,13 @@ export const registerForEvent = async (data: EventRegistrationPayload) => {
 /**
  * Helper to get the public URL for an event image from the Supabase 'events' bucket.
  */
-const getEventImageUrl = (imagePath: string | undefined | null) => {
+export const getEventImageUrl = (imagePath: string | undefined | null) => {
   if (!imagePath) return "";
   // If it's already a full URL or a local asset, return it directly
   if (imagePath.startsWith("http") || imagePath.startsWith("/assets")) {
     return imagePath;
   }
-  
+
   if (supabase) {
     const { data } = supabase.storage.from("events").getPublicUrl(imagePath);
     return data.publicUrl;
@@ -63,58 +78,44 @@ const getEventImageUrl = (imagePath: string | undefined | null) => {
 };
 
 /**
- * Fetch all events from the `events` DB table.
+ * Fetch all events from the `events` DB table via the backend API, which
+ * also attaches live attendee counts (`v_event_attendees`).
  */
-export const fetchEvents = async () => {
-  if (supabase) {
-    try {
-      const { data, error } = await supabase
-        .from("events")
-        .select("*")
-        .order("created_at", { ascending: true });
-
-      if (!error && data) {
-        return data.map((event) => ({
-          ...event,
-          image: getEventImageUrl(event.image),
-        }));
-      }
-      if (error) {
-        console.error("Supabase events fetch error:", error);
-      }
-    } catch (err) {
-      console.error("Supabase events fetch exception:", err);
-    }
+export const fetchEvents = async (): Promise<DbEvent[]> => {
+  try {
+    const res = await API.get("/events");
+    const events: DbEvent[] = res.data?.events ?? [];
+    return events;
+  } catch (err) {
+    console.error("Events fetch error:", err);
+    return [];
   }
-  return [];
 };
 
 /**
- * Fetch a single event by its slug from DB table.
+ * Only events that are approved and haven't happened yet.
  */
-export const getEventBySlug = async (slug: string) => {
-  if (supabase) {
-    try {
-      const { data, error } = await supabase
-        .from("events")
-        .select("*")
-        .eq("slug", slug)
-        .maybeSingle();
+export const fetchUpcomingEvents = async (): Promise<DbEvent[]> => {
+  const events = await fetchEvents();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-      if (!error && data) {
-        return {
-          ...data,
-          image: getEventImageUrl(data.image),
-        };
-      }
-      if (error) {
-        console.error("Supabase event by slug fetch error:", error);
-      }
-    } catch (err) {
-      console.error("Supabase event by slug fetch exception:", err);
-    }
-  }
-  return null;
+  return events
+    .filter((event) => event.status === "approved")
+    .filter((event) => new Date(event.event_day) >= today)
+    .sort((a, b) => {
+      // Boosted (sponsored) events stay pinned to the top.
+      if (a.is_boosted !== b.is_boosted) return a.is_boosted ? -1 : 1;
+      return new Date(a.event_day).getTime() - new Date(b.event_day).getTime();
+    });
+};
+
+/**
+ * Fetch a single event by its DB id.
+ */
+export const getEventById = async (id: string): Promise<DbEvent | null> => {
+  const events = await fetchEvents();
+  return events.find((event) => event.id === id) ?? null;
 };
 
 /**

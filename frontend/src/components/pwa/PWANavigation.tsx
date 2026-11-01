@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -15,7 +15,7 @@ import {
 import { APP_CONFIG } from "@/config/app";
 import { useAuthStore } from "@/store/useAuthStore";
 import NotificationCenter from "@/components/pwa/NotificationCenter";
-import { hasUpcomingLocalEvents } from "@/data/localEvents";
+import { fetchUpcomingEvents } from "@/api/events";
 
 interface NavItem {
   name: string;
@@ -35,7 +35,15 @@ const BASE_NAV_ITEMS: NavItem[] = [
 export default function PWANavigation() {
   const pathname = usePathname() || "";
   const user = useAuthStore((state) => state.user);
-  const NAV_ITEMS = hasUpcomingLocalEvents()
+  const [hasEvents, setHasEvents] = useState(false);
+
+  useEffect(() => {
+    fetchUpcomingEvents()
+      .then((events) => setHasEvents(events.length > 0))
+      .catch(() => setHasEvents(false));
+  }, []);
+
+  const NAV_ITEMS = hasEvents
     ? BASE_NAV_ITEMS
     : BASE_NAV_ITEMS.filter((item) => item.name !== "Events");
 

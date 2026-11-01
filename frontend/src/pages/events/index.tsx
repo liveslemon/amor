@@ -6,40 +6,30 @@ import Link from "next/link";
 import {
   CalendarDays,
   MapPin,
-  Clock,
-  Ticket,
   Users,
   Search,
-  Sparkles,
-  Heart,
-  Flame,
+  Loader2,
 } from "lucide-react";
 import { APP_CONFIG } from "@/config/app";
-import { getUpcomingLocalEvents } from "@/data/localEvents";
-
-const CATEGORIES = [
-  "All",
-  "❤️ Date-Friendly",
-  "🔥 Social",
-  "🎉 Party",
-  "🍽️ Food & Drinks",
-  "🏀 Sports",
-];
+import { fetchUpcomingEvents, getEventImageUrl, DbEvent } from "@/api/events";
 
 export default function EventsIndexPage() {
-  const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [events, setEvents] = useState<DbEvent[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const upcomingEvents = getUpcomingLocalEvents();
+  useEffect(() => {
+    fetchUpcomingEvents()
+      .then(setEvents)
+      .finally(() => setLoading(false));
+  }, []);
 
-  const filteredEvents = upcomingEvents.filter((event) => {
-    const matchesCat =
-      selectedCategory === "All" ||
-      selectedCategory.toLowerCase().includes(event.category.toLowerCase());
-    const matchesSearch =
-      event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      event.location.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCat && matchesSearch;
+  const filteredEvents = events.filter((event) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      event.event_name.toLowerCase().includes(query) ||
+      event.location.toLowerCase().includes(query)
+    );
   });
 
   return (
@@ -72,27 +62,9 @@ export default function EventsIndexPage() {
             </p>
           </div>
 
-          {/* Search & Category Toolbar */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-            {/* Category Filter Chips */}
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 order-2 md:order-1">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`shrink-0 text-xs px-3.5 py-1.5 rounded-full transition-all cursor-pointer ${
-                    selectedCategory === cat
-                      ? "bg-white text-black font-semibold"
-                      : "bg-white/[0.04] text-white/70 hover:bg-white/[0.08]"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-
-            {/* Search Box */}
-            <div className="relative w-full md:w-72 order-1 md:order-2">
+          {/* Search Toolbar */}
+          <div className="flex justify-end">
+            <div className="relative w-full md:w-72">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
               <input
                 type="text"
@@ -105,7 +77,11 @@ export default function EventsIndexPage() {
           </div>
 
           {/* Event Cards Grid */}
-          {filteredEvents.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-6 h-6 text-[#FFB6C1] animate-spin" />
+            </div>
+          ) : filteredEvents.length === 0 ? (
             <div className="rounded-2xl bg-[#0c1322] border border-white/5 p-10 text-center space-y-1.5">
               <p className="text-sm text-white/70">No events available right now.</p>
               <p className="text-xs text-white/40">
@@ -114,67 +90,78 @@ export default function EventsIndexPage() {
             </div>
           ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 pt-1">
-            {filteredEvents.map((evt) => (
-              <Link
-                key={evt.id}
-                href={`/events/${evt.slug}`}
-                className="rounded-2xl bg-[#0c1322] overflow-hidden group"
-              >
-                <div className="relative h-48 w-full bg-[#141c2e] overflow-hidden">
-                  <img
-                    src={evt.image}
-                    alt={evt.title}
-                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0c1322] via-transparent to-black/30" />
+            {filteredEvents.map((evt) => {
+              const entryFee =
+                Number(evt.ticket_price) > 0
+                  ? `From NGN ${Number(evt.ticket_price).toLocaleString()}`
+                  : "Free";
+              const eventDate = new Date(evt.event_day).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              });
 
-                  {/* Badges */}
-                  <div className="absolute top-3 left-3 flex items-center gap-1.5">
-                    <span className="text-[10px] font-semibold uppercase px-2.5 py-0.5 rounded-full bg-black/75 text-white/90">
-                      {evt.badge}
-                    </span>
-                  </div>
+              return (
+                <Link
+                  key={evt.id}
+                  href={`/events/${evt.id}`}
+                  className="rounded-2xl bg-[#0c1322] overflow-hidden group"
+                >
+                  <div className="relative h-48 w-full bg-[#141c2e] overflow-hidden">
+                    <img
+                      src={getEventImageUrl(evt.event_picture)}
+                      alt={evt.event_name}
+                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0c1322] via-transparent to-black/30" />
 
-                  <div className="absolute bottom-3 right-3 flex items-center gap-1 text-[11px] font-medium rounded-full bg-black/75 px-2.5 py-0.5 text-white">
-                    <Users className="w-3 h-3 text-[#FFB6C1]" />
-                    <span>{evt.attendeesCount} going</span>
-                  </div>
-                </div>
-
-                <div className="p-4 space-y-3">
-                  <div>
-                    <span className="text-[10px] uppercase tracking-wider text-[#FFB6C1] font-semibold">
-                      {evt.vibe}
-                    </span>
-                    <h2 className="font-serif text-xl text-white mt-0.5">
-                      {evt.title}
-                    </h2>
-                  </div>
-
-                  <div className="space-y-1 text-xs text-white/60">
-                    <div className="flex items-center gap-2">
-                      <CalendarDays className="w-3.5 h-3.5 text-white/40" />
-                      <span>
-                        {evt.date} • {evt.time}
+                    {/* Badge */}
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5">
+                      {evt.is_boosted && (
+                        <span className="text-[10px] font-semibold uppercase px-2.5 py-0.5 rounded-full bg-[#FFB6C1] text-black">
+                          Promoted
+                        </span>
+                      )}
+                      <span className="text-[10px] font-semibold uppercase px-2.5 py-0.5 rounded-full bg-black/75 text-white/90">
+                        {evt.ticket_type}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-3.5 h-3.5 text-white/40" />
-                      <span>{evt.location}</span>
+
+                    <div className="absolute bottom-3 right-3 flex items-center gap-1 text-[11px] font-medium rounded-full bg-black/75 px-2.5 py-0.5 text-white">
+                      <Users className="w-3 h-3 text-[#FFB6C1]" />
+                      <span>{evt.attendee_count} going</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                    <span className="text-sm font-semibold text-white">
-                      {evt.price}
-                    </span>
-                    <span className="rounded-full bg-white/10 px-4 py-2 text-xs font-medium text-white transition-colors group-hover:bg-white/15">
-                      View & Reserve →
-                    </span>
+                  <div className="p-4 space-y-3">
+                    <div>
+                      <h2 className="font-serif text-xl text-white mt-0.5">
+                        {evt.event_name}
+                      </h2>
+                    </div>
+
+                    <div className="space-y-1 text-xs text-white/60">
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="w-3.5 h-3.5 text-white/40" />
+                        <span>{eventDate}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-3.5 h-3.5 text-white/40" />
+                        <span>{evt.location}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                      <span className="text-sm font-semibold text-white">
+                        {entryFee}
+                      </span>
+                      <span className="rounded-full bg-white/10 px-4 py-2 text-xs font-medium text-white transition-colors group-hover:bg-white/15">
+                        View & Reserve →
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
           )}
         </main>
