@@ -28,7 +28,6 @@ import { APP_CONFIG } from "@/config/app";
 import API from "@/api/client";
 import { fetchCurrentMatch } from "@/api/matches";
 import {
-  deletePhoto,
   savePhotos,
   savePreferences,
   savePreferredBuilds,
@@ -73,7 +72,7 @@ export default function MePage() {
   const [brokenPhotoIndexes, setBrokenPhotoIndexes] = useState<Set<number>>(new Set());
   const [photoStatus, setPhotoStatus] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
+  const [deletingPhotoIndex, setDeletingPhotoIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -185,14 +184,15 @@ export default function MePage() {
     try {
       const optimized = await optimizeImage(selectedFile);
       const uploaded = await uploadPhotoBinary(optimized);
-      const nextPhotos = [
-        ...profilePhotos,
-        {
-          image_url: uploaded.image_url,
-          photo_type: profilePhotos.length === 0 ? "Profile" : "Gallery",
-          upload_order: profilePhotos.length + 1,
-        },
-      ];
+      // Re-derive photo_type/upload_order for every photo from its position,
+      // since stored rows may carry a stale or null photo_type.
+      const nextPhotos = [...profilePhotos, { image_url: uploaded.image_url }].map(
+        (p, i) => ({
+          image_url: p.image_url,
+          photo_type: i === 0 ? "Profile" : "Gallery",
+          upload_order: i + 1,
+        }),
+      );
       const saved = await savePhotos(nextPhotos);
       setProfilePhotos(saved.photos || nextPhotos);
       setBrokenPhotoIndexes(new Set());
@@ -212,14 +212,28 @@ export default function MePage() {
 
   const handleDeletePhoto = async (index: number) => {
     const photo = profilePhotos[index];
-    if (!photo?.id || deletingPhotoId) return;
+    if (!photo || deletingPhotoIndex !== null) return;
+    if (profilePhotos.length <= 1) {
+      setPhotoStatus("Upload a replacement photo before removing your only photo.");
+      return;
+    }
     if (!window.confirm("Remove this photo?")) return;
 
-    setDeletingPhotoId(photo.id);
+    // The live backend only exposes a "replace all photos" endpoint, so a
+    // single delete is done by re-saving the list without this one.
+    const remaining = profilePhotos
+      .filter((_, i) => i !== index)
+      .map((p, i) => ({
+        image_url: p.image_url,
+        photo_type: i === 0 ? "Profile" : "Gallery",
+        upload_order: i + 1,
+      }));
+
+    setDeletingPhotoIndex(index);
     setPhotoStatus("");
     try {
-      await deletePhoto(photo.id);
-      setProfilePhotos((prev) => prev.filter((_, i) => i !== index));
+      const saved = await savePhotos(remaining);
+      setProfilePhotos(saved.photos || remaining);
       setBrokenPhotoIndexes(new Set());
       setPhotoStatus("Photo removed.");
     } catch (error) {
@@ -231,7 +245,7 @@ export default function MePage() {
           : null;
       setPhotoStatus(message || "Could not remove photo. Please try again.");
     } finally {
-      setDeletingPhotoId(null);
+      setDeletingPhotoIndex(null);
     }
   };
 
@@ -314,9 +328,20 @@ export default function MePage() {
               {/* User Profile Card */}
               <div className="rounded-2xl bg-[#0c1322] border border-white/5 p-5 space-y-4">
                 <div className="flex items-center gap-4">
-                  <div className="relative flex items-center justify-center w-16 h-16 rounded-full bg-[#141d2e] text-2xl font-serif text-white">
-                    {displayName.charAt(0).toUpperCase()}
-                    <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-400" />
+                  <div className="relative flex items-center justify-center w-16 h-16 rounded-full bg-[#141d2e] text-2xl font-serif text-white overflow-hidden shrink-0">
+                    {profilePhotos[0] && !brokenPhotoIndexes.has(0) ? (
+                      <img
+                        src={profilePhotos[0].image_url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        onError={() =>
+                          setBrokenPhotoIndexes((prev) => new Set(prev).add(0))
+                        }
+                      />
+                    ) : (
+                      displayName.charAt(0).toUpperCase()
+                    )}
+                    <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-400 ring-2 ring-[#0c1322]" />
                   </div>
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-1.5">
@@ -370,11 +395,16 @@ export default function MePage() {
                       ) : (
                         <Camera className="h-6 w-6 text-white/25" />
                       )}
-                      {profilePhotos[index]?.id && (
+                      {index === 0 && profilePhotos[0] && (
+                        <span className="absolute top-1.5 left-1.5 rounded-full bg-black/70 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white/80">
+                          Display
+                        </span>
+                      )}
+                      {profilePhotos[index] && (
                         <button
                           type="button"
                           onClick={() => handleDeletePhoto(index)}
-                          disabled={deletingPhotoId === profilePhotos[index].id}
+                          disabled={deletingPhotoIndex === index}
                           aria-label={`Remove profile photo ${index + 1}`}
                           className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white/80 hover:bg-red-500 hover:text-white transition-colors disabled:opacity-40 cursor-pointer"
                         >
