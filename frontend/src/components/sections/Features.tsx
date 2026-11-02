@@ -2,16 +2,10 @@
 
 import React from "react";
 import { motion } from "framer-motion";
+import { useIsMobile } from "@/lib/useIsMobile";
 
 const RealDatesDelivered = () => {
-  const [isMobile, setIsMobile] = React.useState(false);
-
-  React.useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
+  const isMobile = useIsMobile();
 
   return (
     <section className="relative w-full flex flex-col items-center justify-center py-16 md:py-20 px-6 md:px-12 overflow-hidden bg-[#070b14] text-white">

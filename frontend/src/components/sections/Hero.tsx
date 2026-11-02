@@ -1,18 +1,38 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { useIsMobile } from "@/lib/useIsMobile";
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+}
 
 const Hero = () => {
+  const isMobile = useIsMobile();
+  const deferredInstallPrompt = useRef<BeforeInstallPromptEvent | null>(null);
   const [timeLeft, setTimeLeft] = useState({
     days: "05",
     hours: "08",
     minutes: "37",
     seconds: "41",
   });
+
+  // Capture the native install prompt so the mobile "Download" button can
+  // trigger it directly instead of just linking to /signup.
+  useEffect(() => {
+    const onBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      deferredInstallPrompt.current = event as BeforeInstallPromptEvent;
+    };
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    return () =>
+      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+  }, []);
 
   // Calculate dynamic countdown to the next upcoming Friday at 8:00 PM
   useEffect(() => {
@@ -108,9 +128,22 @@ const Hero = () => {
           transition={{ duration: 0.8, delay: 0.4 }}
           className="flex flex-col items-center gap-6 w-full max-w-sm"
         >
-          <Link href="/signup" className="w-full">
+          <Link
+            href="/signup"
+            className="w-full"
+            onClick={(e) => {
+              if (isMobile && deferredInstallPrompt.current) {
+                e.preventDefault();
+                const prompt = deferredInstallPrompt.current;
+                deferredInstallPrompt.current = null;
+                prompt.prompt();
+              }
+            }}
+          >
             <button className="w-full h-14 rounded-xl bg-white hover:bg-white/90 text-[#0a0f1a] transition-colors flex items-center justify-center gap-3 cursor-pointer border-none px-8">
-              <span className="font-sans font-bold text-lg">Get Started</span>
+              <span className="font-sans font-bold text-lg">
+                {isMobile ? "Download" : "Get Started"}
+              </span>
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
           </Link>
