@@ -40,9 +40,17 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Browsers default form controls to the system UI font instead of
+   inheriting the page font, which can drop the emoji fallback above and
+   leave typed emoji invisible in inputs/textareas. */
+input, textarea, select, button {
+  font-family: inherit;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -132,15 +140,44 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .legal-copy .legal-action {
-  color: #000B1A;
+  color: white;
   text-decoration: none;
 }
 
 .legal-copy .legal-action:hover {
-  color: white;
+  color: #000B1A;
 }
 
 .legal-copy strong {
   color: white;
   font-weight: 600;
+}
+
+/* Thin scrollbar that stays invisible until the user scrolls/hovers. */
+.scrollbar-whisper {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.scrollbar-whisper:hover,
+.scrollbar-whisper:focus-within {
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+
+.scrollbar-whisper::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-whisper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-whisper::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 9999px;
+}
+
+.scrollbar-whisper:hover::-webkit-scrollbar-thumb,
+.scrollbar-whisper:focus-within::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.22);
 }

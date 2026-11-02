@@ -9,7 +9,6 @@ import {
   Calendar,
   MessageCircle,
   Clock3,
-  MapPin,
   CheckCircle2,
   Bell,
   ArrowRight,
@@ -17,6 +16,7 @@ import {
   Flame,
   UserCheck,
   Settings,
+  History,
 } from "lucide-react";
 import API from "@/api/client";
 import { fetchCurrentMatch as fetchCurrentMatchData } from "@/api/matches";
@@ -29,7 +29,7 @@ import { triggerHaptic } from "@/lib/haptics";
 interface PartnerProfile {
   id: string;
   name: string;
-  whatsapp_number: string;
+  whatsapp_number: string | null;
   profile: {
     age?: number;
     height?: number;
@@ -55,6 +55,7 @@ interface MatchData {
   match_score: number;
   match_week: string;
   status: string;
+  blocked: boolean;
   partner: PartnerProfile;
 }
 
@@ -112,7 +113,7 @@ export default function MyDatePage() {
   useEffect(() => {
     const calculateCountdown = () => {
       const now = new Date();
-      const nextFriday = new Date();
+      const nextFriday = new Date(now);
       const currentDay = now.getDay();
       const daysUntilFriday = (5 - currentDay + 7) % 7;
 
@@ -138,6 +139,7 @@ export default function MyDatePage() {
     };
 
     calculateCountdown();
+
     const timer = setInterval(calculateCountdown, 1000);
     return () => clearInterval(timer);
   }, []);
@@ -149,12 +151,13 @@ export default function MyDatePage() {
   const whatsappUrl = `https://wa.me/${cleanWhatsapp}?text=${encodeURIComponent(
     `Hey ${partner?.name || "there"}! We were paired on Minglee for our Friday date. Excited to meet you! 😊`
   )}`;
+  const isBlocked = matchData?.blocked ?? false;
 
   const submitSafetyAction = async (action: "block" | "report") => {
     if (!partner?.id) return;
     const confirmed = window.confirm(
       action === "block"
-        ? `Block ${partner.name}? You will not be paired with this member again.`
+        ? `Block ${partner.name}? This won't end your current chat, but it's recorded so you won't be matched together again.`
         : `Report ${partner.name}'s profile or photos for review?`,
     );
     if (!confirmed) return;
@@ -163,6 +166,15 @@ export default function MyDatePage() {
     try {
       if (action === "block") {
         await API.post(`/users/${encodeURIComponent(partner.id)}/block`);
+        setMatchData((prev) =>
+          prev
+            ? {
+                ...prev,
+                blocked: true,
+                partner: { ...prev.partner, whatsapp_number: null, photos: [] },
+              }
+            : prev,
+        );
       } else {
         await API.post("/reports", {
           reported_user_id: partner.id,
@@ -175,11 +187,15 @@ export default function MyDatePage() {
           : "Your report was sent to the safety team.",
       );
     } catch (error) {
-      console.error(`Could not ${action} this member:`, error);
+      const responseData = (error as { response?: { data?: unknown } })?.response?.data as
+        | { error?: string; details?: unknown }
+        | undefined;
+      console.error(`Could not ${action} this member:`, responseData ?? error);
       setSafetyStatus(
-        action === "block"
-          ? "Blocking is unavailable until the safety service is connected."
-          : "Reporting is unavailable until the safety service is connected.",
+        responseData?.error ||
+          (action === "block"
+            ? "Blocking is unavailable until the safety service is connected."
+            : "Reporting is unavailable until the safety service is connected."),
       );
     }
   };
@@ -220,9 +236,30 @@ export default function MyDatePage() {
 
           {/* Main Date Section */}
           {loading ? (
-            <div className="py-24 text-center">
-              <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-white/40 border-t-transparent mb-3" />
-              <p className="text-sm text-white/50">Retrieving your Friday date...</p>
+            /* SKELETON — avoid flashing the active/waiting card while the match loads */
+            <div className="space-y-6 animate-pulse">
+              <div className="flex items-center justify-between gap-2 border-b border-white/5 pb-4">
+                <div className="space-y-2">
+                  <div className="h-3 w-32 rounded-full bg-white/[0.06]" />
+                  <div className="h-8 w-56 rounded-full bg-white/[0.06]" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div className="lg:col-span-5">
+                  <div className="aspect-[3/4] w-full rounded-2xl md:rounded-3xl bg-white/[0.04]" />
+                </div>
+                <div className="lg:col-span-7">
+                  <div className="rounded-2xl bg-[#0c1220] p-6 space-y-4">
+                    <div className="h-4 w-1/3 rounded-full bg-white/[0.06]" />
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="h-14 rounded-xl bg-white/[0.04]" />
+                      ))}
+                    </div>
+                    <div className="h-12 w-full rounded-full bg-white/[0.06]" />
+                  </div>
+                </div>
+              </div>
             </div>
           ) : matchData && partner ? (
             /* ACTIVE DATE VIEW */
@@ -247,12 +284,6 @@ export default function MyDatePage() {
                     </span>
                   </h1>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="rounded-full bg-black/80 px-3.5 py-1 text-xs font-semibold text-white">
-                    {matchData.match_score}% Compatibility
-                  </div>
-                </div>
               </div>
 
               {/* Match Card Layout */}
@@ -273,10 +304,6 @@ export default function MyDatePage() {
                     )}
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-5">
                       <h2 className="text-2xl font-serif text-white">{partner.name}, {partner.profile?.age || 21}</h2>
-                      <p className="text-xs text-white/70 flex items-center gap-1.5 mt-0.5">
-                        <MapPin className="w-3.5 h-3.5 text-[#FFB6C1]" />
-                        <span>Pan-Atlantic University Campus</span>
-                      </p>
                     </div>
                   </div>
 
@@ -374,20 +401,39 @@ export default function MyDatePage() {
                       </p>
                     </div>
 
-                    {/* WhatsApp Action Button */}
-                    <div className="pt-2">
-                      <a
-                        href={whatsappUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="h-12 w-full cursor-pointer rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-sans font-semibold text-sm transition-colors active:scale-[0.98] flex items-center justify-center gap-2.5"
-                      >
-                        <MessageCircle className="w-5 h-5 fill-current" />
-                        <span>Say Hello on WhatsApp</span>
-                      </a>
-                      <p className="text-[11px] text-center text-white/40 mt-2">
-                        Matches persist throughout the week so you can plan your date at your own pace.
-                      </p>
+                    {/* Chat Action Buttons */}
+                    {isBlocked ? (
+                      <div className="pt-2 rounded-xl bg-white/[0.04] p-4 text-center">
+                        <p className="text-sm text-white/60">
+                          You've blocked this member. You can no longer message each other.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="pt-2 flex gap-2.5">
+                        <Link
+                          href="/chats"
+                          className="h-12 flex-1 cursor-pointer rounded-full bg-[#FFB6C1] hover:bg-[#ffc4cd] text-[#1a0a10] font-sans font-semibold text-sm transition-colors active:scale-[0.98] flex items-center justify-center gap-2.5"
+                        >
+                          <MessageCircle className="w-5 h-5" />
+                          <span>Message in Minglee</span>
+                        </Link>
+                        <a
+                          href={whatsappUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label="Say hello on WhatsApp"
+                          className="h-12 w-12 shrink-0 cursor-pointer rounded-full bg-emerald-600 hover:bg-emerald-500 text-white transition-colors active:scale-[0.98] flex items-center justify-center"
+                        >
+                          <MessageCircle className="w-5 h-5 fill-current" />
+                        </a>
+                      </div>
+                    )}
+                    <div className="pt-0">
+                      {!isBlocked && (
+                        <p className="text-[11px] text-center text-white/40 mt-2">
+                          Matches persist throughout the week so you can plan your date at your own pace.
+                        </p>
+                      )}
                       <div className="grid grid-cols-2 gap-2 pt-2">
                         <button
                           type="button"
@@ -399,9 +445,10 @@ export default function MyDatePage() {
                         <button
                           type="button"
                           onClick={() => submitSafetyAction("block")}
-                          className="rounded-full bg-red-500/10 px-3 py-2 text-xs text-red-200 hover:bg-red-500/20"
+                          disabled={isBlocked}
+                          className="rounded-full bg-red-500/10 px-3 py-2 text-xs text-red-200 hover:bg-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Block member
+                          {isBlocked ? "Blocked" : "Block member"}
                         </button>
                       </div>
                       {safetyStatus && (
@@ -555,10 +602,13 @@ export default function MyDatePage() {
           )}
 
           {/* PAST DATES ARCHIVE */}
-          <div className="rounded-2xl bg-[#0c1322] p-6 text-center">
-            <p className="font-serif text-xl text-white">Past dates</p>
-            <p className="mt-2 text-sm text-white/50">
-              Past dates will appear here when match history is available.
+          <div className="rounded-2xl border border-white/10 bg-[#0c1322] p-8 text-center">
+            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5">
+              <History className="h-4 w-4 text-white/40" />
+            </div>
+            <p className="font-serif text-lg text-white">Past dates</p>
+            <p className="mt-1.5 text-xs text-white/40">
+              Your match history will appear here once you've had a few Friday dates.
             </p>
           </div>
         </main>

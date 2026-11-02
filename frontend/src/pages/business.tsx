@@ -447,7 +447,7 @@ export default function BusinessPage() {
           </div>
         </header>
 
-        <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 space-y-8">
+        <main className="mx-auto max-w-6xl px-4 pt-8 pb-28 sm:px-6 md:pb-12 space-y-8">
           {/* Navigation Tabs */}
           <nav className="flex gap-2 border-b border-white/10 pb-3 overflow-x-auto">
             {tabs.map((t) => (
@@ -788,6 +788,24 @@ export default function BusinessPage() {
                       <span className="text-[10px] text-white/40 block pt-1">
                         Shown for 24h on {scheduledDate}
                       </span>
+                    </div>
+                  ) : adType === "notification" ? (
+                    // Notification ads never carry an image (upload UI is
+                    // hidden for this type above), so the preview skips the
+                    // media box entirely instead of showing an empty one.
+                    <div className="rounded-xl border border-white/10 bg-[#0a0f1a] overflow-hidden">
+                      <div className="p-4 space-y-1">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-[#FFB6C1]">
+                          Notification
+                        </span>
+                        <h4 className="font-serif text-base text-white">{title || "Ad Headline"}</h4>
+                        <p className="text-xs text-white/60 line-clamp-2">
+                          {textContent || "Text description will appear here..."}
+                        </p>
+                        <span className="text-[10px] text-white/40 block pt-1">
+                          Shown for 24h on {scheduledDate}
+                        </span>
+                      </div>
                     </div>
                   ) : (
                   <div className="rounded-xl border border-white/10 bg-[#0a0f1a] overflow-hidden">

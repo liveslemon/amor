@@ -30,6 +30,7 @@ import {
   DbEvent,
 } from "@/api/events";
 import { useAuthStore } from "@/store/useAuthStore";
+import { ProfileFieldsStep1 } from "@/components/profile/ProfileFieldsStep1";
 
 // ─── Page Component ──────────────────────────────────────────────────────────
 export default function EventDetailsPage() {
@@ -225,9 +226,27 @@ export default function EventDetailsPage() {
   // ── Loading skeleton ─────────────────────────────────────────────────────
   if (pageLoading) {
     return (
-      <div className="min-h-screen bg-[#000B1A] flex items-center justify-center">
-        <Loader2 className="w-6 h-6 text-[#FFB6C1] animate-spin" />
-      </div>
+      <main className="min-h-screen bg-[#000B1A] pb-28 md:pb-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 md:pt-24 pb-16">
+          <div className="h-5 w-24 rounded-full bg-white/[0.06] mb-8 animate-pulse" />
+          <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-8 lg:gap-12 items-start animate-pulse">
+            <div className="space-y-7">
+              <div className="h-80 w-full rounded-2xl bg-white/[0.04]" />
+              <div className="space-y-3">
+                <div className="h-9 w-2/3 rounded-full bg-white/[0.06]" />
+                <div className="h-4 w-full rounded-full bg-white/[0.04]" />
+                <div className="h-4 w-5/6 rounded-full bg-white/[0.04]" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="h-16 rounded-xl bg-white/[0.03]" />
+                ))}
+              </div>
+            </div>
+            <div className="h-80 rounded-2xl bg-white/[0.04]" />
+          </div>
+        </div>
+      </main>
     );
   }
 
@@ -497,59 +516,10 @@ export default function EventDetailsPage() {
                                 </div>
                               </FormField>
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <FormField label="Gender">
-                                <select required value={signupForm.gender} onChange={(e) => setSignupForm({ ...signupForm, gender: e.target.value })} className={`${inputCls} appearance-none`}>
-                                  <option value="" disabled>Select</option>
-                                  <option value="Male">Male</option>
-                                  <option value="Female">Female</option>
-                                </select>
-                              </FormField>
-                              <FormField label="Age">
-                                <input required type="number" min="18" placeholder="e.g. 23" value={signupForm.age} onChange={(e) => setSignupForm({ ...signupForm, age: e.target.value })} className={inputCls} />
-                              </FormField>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <FormField label="Build">
-                                <select required value={signupForm.build} onChange={(e) => setSignupForm({ ...signupForm, build: e.target.value })} className={`${inputCls} appearance-none`}>
-                                  <option value="" disabled>Select</option>
-                                  {["Slim","Petite","Athletic","Average","Muscular","Curvy","Plus-size"].map(b => <option key={b} value={b}>{b}</option>)}
-                                </select>
-                              </FormField>
-                              <FormField label="Skin Tone">
-                                <select required value={signupForm.skin_tone} onChange={(e) => setSignupForm({ ...signupForm, skin_tone: e.target.value })} className={`${inputCls} appearance-none`}>
-                                  <option value="" disabled>Select</option>
-                                  {["Fair","Tan","Brown","Dark"].map(t => <option key={t} value={t}>{t}</option>)}
-                                </select>
-                              </FormField>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <FormField label="Height">
-                                <div className="flex gap-2">
-                                  <div className="relative flex-1">
-                                    <input required type="number" min="3" max="8" placeholder="Ft" value={signupForm.height_ft} onChange={(e) => setSignupForm({ ...signupForm, height_ft: e.target.value })} className="w-full text-base sm:text-sm rounded-xl bg-white/[0.04] border border-white/[0.08] pl-3 pr-6 py-3 outline-none focus:border-white/25 text-white transition-colors" />
-                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/35">ft</span>
-                                  </div>
-                                  <div className="relative flex-1">
-                                    <input required type="number" min="0" max="11" placeholder="In" value={signupForm.height_in} onChange={(e) => setSignupForm({ ...signupForm, height_in: e.target.value })} className="w-full text-base sm:text-sm rounded-xl bg-white/[0.04] border border-white/[0.08] pl-3 pr-6 py-3 outline-none focus:border-white/25 text-white transition-colors" />
-                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/35">in</span>
-                                  </div>
-                                </div>
-                              </FormField>
-                              <FormField label="Pref Age Range">
-                                <div className="flex gap-2">
-                                  <input required type="number" min="18" placeholder="Min" value={signupForm.preferred_min_age} onChange={(e) => setSignupForm({ ...signupForm, preferred_min_age: e.target.value })} className={inputCls} />
-                                  <input required type="number" min="18" placeholder="Max" value={signupForm.preferred_max_age} onChange={(e) => setSignupForm({ ...signupForm, preferred_max_age: e.target.value })} className={inputCls} />
-                                </div>
-                              </FormField>
-                            </div>
-                            <FormField label="Pref Body Type">
-                              <div className="flex flex-wrap gap-2 pt-1">
-                                {["Slim","Petite","Athletic","Average","Muscular","Curvy","Plus-size"].map(b => (
-                                  <button key={b} type="button" onClick={() => setSignupForm({ ...signupForm, preferred_builds: signupForm.preferred_builds.includes(b) ? signupForm.preferred_builds.filter(x => x !== b) : [...signupForm.preferred_builds, b] })} className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors cursor-pointer ${signupForm.preferred_builds.includes(b) ? "bg-[#FFB6C1]/15 border-[#FFB6C1]/40 text-[#FFB6C1]" : "bg-white/[0.04] border-white/[0.08] text-white/60 hover:border-white/20"}`}>{b}</button>
-                                ))}
-                              </div>
-                            </FormField>
+                            <ProfileFieldsStep1
+                              value={signupForm}
+                              onChange={(patch) => setSignupForm({ ...signupForm, ...patch })}
+                            />
                           </>
                         )}
 

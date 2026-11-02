@@ -27,7 +27,7 @@ interface NavItem {
 const BASE_NAV_ITEMS: NavItem[] = [
   { name: "Home", href: "/home", icon: Home },
   { name: "Dates", href: "/date", icon: Heart },
-  { name: "Chats", href: "/chats", icon: MessageCircle, badge: "1" },
+  { name: "Chats", href: "/chats", icon: MessageCircle },
   { name: "Events", href: "/events", icon: CalendarDays },
   { name: "Me", href: "/me", icon: User },
 ];
@@ -54,7 +54,6 @@ export default function PWANavigation() {
     pathname === "/Landing" ||
     pathname === "/login" ||
     pathname === "/signup" ||
-    pathname === "/registration-complete" ||
     pathname === "/terms" ||
     pathname === "/privacy" ||
     pathname.startsWith("/admin");

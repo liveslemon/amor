@@ -109,7 +109,7 @@ export default function PWAHome() {
       // Check if today is Friday (after 8 AM is active match time)
       const isFriActive = dayOfWeek === 5 && hour >= 8;
 
-      const target = new Date();
+      const target = new Date(now);
       let daysUntilFriday = (5 - dayOfWeek + 7) % 7;
       if (daysUntilFriday === 0 && now.getHours() >= 8) {
         daysUntilFriday = 7;
@@ -135,6 +135,7 @@ export default function PWAHome() {
     };
 
     updateCountdown();
+
     const timer = setInterval(updateCountdown, 1000);
     return () => clearInterval(timer);
   }, []);
@@ -198,7 +199,7 @@ export default function PWAHome() {
             {/* ─── LEFT COLUMN: Date Spotlight & Weekly Rhythm (7 cols on lg) ─── */}
             <div className="lg:col-span-7 space-y-6">
               {/* Thursday Match Preparation Banner */}
-              {countdown.isThursday && !match && (
+              {!loading && countdown.isThursday && !match && (
                 <div className="rounded-2xl bg-[#0c1322] p-5 space-y-2.5">
                   <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#FFB6C1]">
                     <Sparkles className="w-4 h-4 text-[#FFB6C1]" />
@@ -242,7 +243,17 @@ export default function PWAHome() {
                   </span>
                 </div>
 
-                {match ? (
+                {loading ? (
+                  /* SKELETON — avoid flashing the wrong card while the match loads */
+                  <div className="rounded-2xl bg-[#0c1322] overflow-hidden animate-pulse">
+                    <div className="h-72 sm:h-80 w-full bg-white/[0.04]" />
+                    <div className="p-5 sm:p-6 space-y-3">
+                      <div className="h-6 w-2/3 rounded-full bg-white/[0.06]" />
+                      <div className="h-4 w-1/3 rounded-full bg-white/[0.04]" />
+                      <div className="h-11 w-full rounded-full bg-white/[0.06] mt-2" />
+                    </div>
+                  </div>
+                ) : match ? (
                   /* ACTIVE FRIDAY MATCH REVEALED CARD */
                   <div className="relative rounded-2xl bg-[#0c1322] overflow-hidden">
                     <div className="relative h-72 sm:h-80 w-full bg-[#141c2e]">
@@ -374,7 +385,15 @@ export default function PWAHome() {
 
                 <div className="space-y-2.5">
                   {/* Current Date Row if exists */}
-                  {match ? (
+                  {loading ? (
+                    <div className="flex items-center gap-3.5 p-4 rounded-2xl bg-[#0c1322] animate-pulse">
+                      <div className="w-12 h-12 rounded-full bg-white/[0.06]" />
+                      <div className="flex-1 space-y-1.5">
+                        <div className="h-3.5 w-1/2 rounded-full bg-white/[0.06]" />
+                        <div className="h-3 w-3/4 rounded-full bg-white/[0.04]" />
+                      </div>
+                    </div>
+                  ) : match ? (
                     <Link
                       href="/chats"
                       className="flex items-center justify-between p-4 rounded-2xl bg-[#0c1322] hover:bg-[#111a2c] transition-colors group"
@@ -397,7 +416,7 @@ export default function PWAHome() {
                             <span className="text-sm sm:text-base font-medium text-white">
                               {match.partner.name}
                             </span>
-                            <span className="text-[10px] bg-white/10 text-[#FFB6C1] px-1.5 py-0.2 rounded-full font-medium">
+                            <span className="text-[10px] bg-white/10 text-[#FFB6C1] px-1.5 py-0.5 rounded-full font-medium">
                               Friday Match
                             </span>
                           </div>

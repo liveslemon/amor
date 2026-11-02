@@ -8,7 +8,6 @@ import {
   MapPin,
   Users,
   Search,
-  Loader2,
 } from "lucide-react";
 import { APP_CONFIG } from "@/config/app";
 import { fetchUpcomingEvents, getEventImageUrl, DbEvent } from "@/api/events";
@@ -78,8 +77,18 @@ export default function EventsIndexPage() {
 
           {/* Event Cards Grid */}
           {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-6 h-6 text-[#FFB6C1] animate-spin" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 pt-1">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="rounded-2xl bg-[#0c1322] overflow-hidden animate-pulse">
+                  <div className="h-48 w-full bg-white/[0.04]" />
+                  <div className="p-4 space-y-3">
+                    <div className="h-5 w-2/3 rounded-full bg-white/[0.06]" />
+                    <div className="h-3 w-1/2 rounded-full bg-white/[0.04]" />
+                    <div className="h-3 w-1/3 rounded-full bg-white/[0.04]" />
+                    <div className="h-8 w-full rounded-full bg-white/[0.04] mt-2" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : filteredEvents.length === 0 ? (
             <div className="rounded-2xl bg-[#0c1322] border border-white/5 p-10 text-center space-y-1.5">
@@ -104,7 +113,7 @@ export default function EventsIndexPage() {
                 <Link
                   key={evt.id}
                   href={`/events/${evt.id}`}
-                  className="rounded-2xl bg-[#0c1322] overflow-hidden group"
+                  className="rounded-2xl bg-[#0c1322] border border-white/10 overflow-hidden group hover:border-white/20 transition-colors"
                 >
                   <div className="relative h-48 w-full bg-[#141c2e] overflow-hidden">
                     <img

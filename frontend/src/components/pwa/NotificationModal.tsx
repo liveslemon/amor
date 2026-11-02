@@ -15,7 +15,31 @@ export default function NotificationModal() {
   const syncedUserId = useRef<string | null>(null);
   const permissionStatus = getNotificationPermissionStatus();
   const subscribed = Boolean(user && subscribedUserId === user.id);
-  const isOpen = Boolean(user) && dismissedUserId !== user?.id;
+  // Checked directly (not via state) so an already-subscribed user never
+  // sees even a one-frame flash of this modal on reload.
+  const alreadySubscribedLocally =
+    typeof window !== "undefined" &&
+    permissionStatus === "granted" &&
+    Boolean(localStorage.getItem("minglee-push-sub"));
+  // Once a user has dismissed this modal (e.g. denied/ignored the browser
+  // permission prompt), don't keep re-showing it on every reload.
+  const alreadyDismissedLocally =
+    typeof window !== "undefined" &&
+    Boolean(user) &&
+    localStorage.getItem(`minglee-push-dismissed:${user?.id}`) === "true";
+  const isOpen =
+    Boolean(user) &&
+    dismissedUserId !== user?.id &&
+    !alreadySubscribedLocally &&
+    !alreadyDismissedLocally;
+
+  const handleDismiss = () => {
+    if (!user) return;
+    if (typeof window !== "undefined") {
+      localStorage.setItem(`minglee-push-dismissed:${user.id}`, "true");
+    }
+    setDismissedUserId(user.id);
+  };
 
   useEffect(() => {
     if (typeof window === "undefined" || !user) return;
@@ -24,6 +48,15 @@ export default function NotificationModal() {
     localStorage.setItem("minglee-push-enabled", "true");
     if (syncedUserId.current === user.id) return;
     syncedUserId.current = user.id;
+
+    // Already subscribed in a previous session: don't re-run the subscribe
+    // flow (and its network calls) on every reload, just close the modal.
+    if (localStorage.getItem("minglee-push-sub")) {
+      setSubscribedUserId(user.id);
+      setDismissedUserId(user.id);
+      return;
+    }
+
     let active = true;
     requestAndSubscribePush()
       .then((result) => {
@@ -132,6 +165,13 @@ export default function NotificationModal() {
                       className="h-11 w-full cursor-pointer rounded-full bg-white px-6 font-sans text-sm font-semibold text-[#0a0f1a] transition-all hover:bg-white/90 active:scale-[0.98] disabled:opacity-50"
                     >
                       {loading ? "Enabling..." : "Enable Required Notifications"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDismiss}
+                      className="h-11 w-full cursor-pointer rounded-full bg-white/5 px-6 font-sans text-sm font-semibold text-white/70 transition-all hover:bg-white/10 active:scale-[0.98]"
+                    >
+                      Maybe later
                     </button>
                   </div>
                 </>
