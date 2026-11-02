@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import API from "@/api/client";
+import { fetchUpcomingEvents } from "@/api/events";
 
 interface Promo {
   id: string;
@@ -66,6 +67,15 @@ export default function PromoBanners({ className = "" }: PromoBannersProps) {
 
   useEffect(() => {
     let active = true;
+
+    fetchUpcomingEvents()
+      .then((events) => {
+        if (!active || events.length > 0) return;
+        setBanners((prev) => prev.filter((banner) => banner.id !== "campus-events"));
+      })
+      .catch((error) => {
+        console.warn("Could not check for upcoming events:", error);
+      });
 
     API.get<{ data?: LiveAd[] }>("/ads", {
       params: { placement: "home-banner", date: new Date().toISOString() },

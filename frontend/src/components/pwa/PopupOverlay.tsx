@@ -59,7 +59,10 @@ export default function PopupOverlay({ popup, onDismiss, onOpen }: PopupOverlayP
   );
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-4">
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-4"
+      onClick={onDismiss}
+    >
       <button
         type="button"
         onClick={onDismiss}
@@ -68,13 +71,15 @@ export default function PopupOverlay({ popup, onDismiss, onOpen }: PopupOverlayP
       >
         <X className="h-5 w-5" />
       </button>
-      {popup.href ? (
-        <Link href={popup.href} onClick={handleOpen} className="block">
-          {content}
-        </Link>
-      ) : (
-        content
-      )}
+      <div onClick={(e) => e.stopPropagation()}>
+        {popup.href ? (
+          <Link href={popup.href} onClick={handleOpen} className="block">
+            {content}
+          </Link>
+        ) : (
+          content
+        )}
+      </div>
     </div>
   );
 }

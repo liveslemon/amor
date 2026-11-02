@@ -442,19 +442,6 @@ export default function MePage() {
                 )}
               </div>
 
-              {/* Private Member Guarantee */}
-              <div className="p-4 rounded-2xl bg-[#0c1322] border border-white/5 space-y-2">
-                <div className="flex items-center gap-2 text-white/80">
-                  <ShieldCheck className="w-4 h-4 text-[#FFB6C1]" />
-                  <span className="text-xs font-medium flex items-center gap-1">
-                    <span className="font-[family-name:var(--font-marker)] text-xs text-white font-normal">Minglee</span>
-                    <span>Campus Verification</span>
-                  </span>
-                </div>
-                <p className="text-[11px] leading-relaxed text-white/50">
-                  Your profile is actively verified within the university network. Every Friday, our algorithm curates your singular romantic introduction.
-                </p>
-              </div>
             </div>
 
             {/* Right Column: Settings Menu List */}

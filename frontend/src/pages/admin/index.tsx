@@ -186,6 +186,9 @@ export default function AdminPage() {
   // Matching trigger state
   const [runningMatch, setRunningMatch] = useState(false);
 
+  // Tracks ids currently mid-request, so approve/reject/unflag buttons can't be spammed.
+  const [pendingActionIds, setPendingActionIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("minglee-admin-key");
@@ -248,75 +251,92 @@ export default function AdminPage() {
     }
   }, [adminSecret]);
 
-  // Review Ad (Approve / Deny)
-  const handleReviewAd = async (adId: string, action: "approve" | "reject", reason?: string) => {
+  const withPendingAction = (id: string, fn: () => Promise<void>) => async () => {
+    if (pendingActionIds.has(id)) return;
+    setPendingActionIds((prev) => new Set(prev).add(id));
     try {
-      setActionMessage(null);
-      const res = await API.post(
-        `/admin/ads/${adId}/review`,
-        {
-          action,
-          rejection_reason: reason || (action === "reject" ? "Clashing of dates with another advert" : undefined),
-        },
-        { headers: { "x-admin-secret": adminSecret } }
-      );
-
-      if (res.data?.success) {
-        setActionMessage({
-          type: "success",
-          text: `Advertisement ${action === "approve" ? "approved" : "denied successfully"}.`,
-        });
-        loadAllData(adminSecret);
-      }
-    } catch (err: any) {
-      const errMsg =
-        err.response?.status === 409 && !err.response?.data?.reason
-          ? "Clashing of dates with another advert"
-          : adminErrorText(err, "Review action failed");
-      setActionMessage({ type: "error", text: errMsg });
+      await fn();
+    } finally {
+      setPendingActionIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     }
   };
+
+  // Review Ad (Approve / Deny)
+  const handleReviewAd = (adId: string, action: "approve" | "reject", reason?: string) =>
+    withPendingAction(adId, async () => {
+      try {
+        setActionMessage(null);
+        const res = await API.post(
+          `/admin/ads/${adId}/review`,
+          {
+            action,
+            rejection_reason: reason || (action === "reject" ? "Clashing of dates with another advert" : undefined),
+          },
+          { headers: { "x-admin-secret": adminSecret } }
+        );
+
+        if (res.data?.success) {
+          setActionMessage({
+            type: "success",
+            text: `Advertisement ${action === "approve" ? "approved" : "denied successfully"}.`,
+          });
+          loadAllData(adminSecret);
+        }
+      } catch (err: any) {
+        const errMsg =
+          err.response?.status === 409 && !err.response?.data?.reason
+            ? "Clashing of dates with another advert"
+            : adminErrorText(err, "Review action failed");
+        setActionMessage({ type: "error", text: errMsg });
+      }
+    })();
 
   // Review Ticket (Approve / Deny)
-  const handleReviewTicket = async (ticketId: string, action: "approve" | "reject") => {
-    try {
-      setActionMessage(null);
-      const res = await API.post(
-        `/admin/tickets/${ticketId}/review`,
-        { action },
-        { headers: { "x-admin-secret": adminSecret } }
-      );
+  const handleReviewTicket = (ticketId: string, action: "approve" | "reject") =>
+    withPendingAction(ticketId, async () => {
+      try {
+        setActionMessage(null);
+        const res = await API.post(
+          `/admin/tickets/${ticketId}/review`,
+          { action },
+          { headers: { "x-admin-secret": adminSecret } }
+        );
 
-      if (res.data?.success) {
-        setActionMessage({
-          type: "success",
-          text: `Ticket event ${action === "approve" ? "approved" : "rejected"}.`,
-        });
-        loadAllData(adminSecret);
+        if (res.data?.success) {
+          setActionMessage({
+            type: "success",
+            text: `Ticket event ${action === "approve" ? "approved" : "rejected"}.`,
+          });
+          loadAllData(adminSecret);
+        }
+      } catch (err: any) {
+        setActionMessage({ type: "error", text: adminErrorText(err, "Ticket review failed") });
       }
-    } catch (err: any) {
-      setActionMessage({ type: "error", text: adminErrorText(err, "Ticket review failed") });
-    }
-  };
+    })();
 
   // Unflag User Profile
-  const handleUnflagUser = async (userId: string) => {
-    try {
-      setActionMessage(null);
-      const res = await API.post(
-        `/admin/users/${userId}/flag`,
-        { is_flagged: false, flag_reason: null },
-        { headers: { "x-admin-secret": adminSecret } }
-      );
+  const handleUnflagUser = (userId: string) =>
+    withPendingAction(userId, async () => {
+      try {
+        setActionMessage(null);
+        const res = await API.post(
+          `/admin/users/${userId}/flag`,
+          { is_flagged: false, flag_reason: null },
+          { headers: { "x-admin-secret": adminSecret } }
+        );
 
-      if (res.data?.success) {
-        setActionMessage({ type: "success", text: "User profile unflagged and restored to good standing." });
-        loadAllData(adminSecret);
+        if (res.data?.success) {
+          setActionMessage({ type: "success", text: "User profile unflagged and restored to good standing." });
+          loadAllData(adminSecret);
+        }
+      } catch (err: any) {
+        setActionMessage({ type: "error", text: adminErrorText(err, "Could not unflag user profile.") });
       }
-    } catch (err: any) {
-      setActionMessage({ type: "error", text: adminErrorText(err, "Could not unflag user profile.") });
-    }
-  };
+    })();
 
   // Broadcast Custom Notification
   const handleSendNotification = async (e: React.FormEvent) => {
@@ -461,6 +481,18 @@ export default function AdminPage() {
             </div>
           )}
 
+          {!isAuthenticated && (
+            <div className="rounded-2xl border border-white/10 bg-[#0c1322] p-10 text-center">
+              <Lock className="mx-auto mb-3 h-6 w-6 text-[#FFB6C1]" />
+              <p className="text-sm text-white/70">
+                Enter the admin secret above and select &quot;Verify &amp;
+                Refresh&quot; to access the dashboard.
+              </p>
+            </div>
+          )}
+
+          {isAuthenticated && (
+            <>
           {/* Tab Selection */}
           <nav className="flex gap-2 border-b border-white/10 pb-3 overflow-x-auto">
             {[
@@ -697,18 +729,20 @@ export default function AdminPage() {
                         <button
                           type="button"
                           onClick={() => handleReviewAd(ad.id, "approve")}
-                          className="flex-1 h-9 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          disabled={pendingActionIds.has(ad.id)}
+                          className="flex-1 h-9 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <Check className="w-3.5 h-3.5" />
-                          Approve
+                          {pendingActionIds.has(ad.id) ? "Working..." : "Approve"}
                         </button>
                         <button
                           type="button"
                           onClick={() => handleReviewAd(ad.id, "reject", "Clashing of dates with another advert")}
-                          className="flex-1 h-9 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          disabled={pendingActionIds.has(ad.id)}
+                          className="flex-1 h-9 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <X className="w-3.5 h-3.5" />
-                          Deny (Clash)
+                          {pendingActionIds.has(ad.id) ? "Working..." : "Deny (Clash)"}
                         </button>
                       </div>
                     </div>
@@ -776,18 +810,20 @@ export default function AdminPage() {
                         <button
                           type="button"
                           onClick={() => handleReviewTicket(t.id, "approve")}
-                          className="flex-1 h-9 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          disabled={pendingActionIds.has(t.id)}
+                          className="flex-1 h-9 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <Check className="w-3.5 h-3.5" />
-                          Approve Ticket
+                          {pendingActionIds.has(t.id) ? "Working..." : "Approve Ticket"}
                         </button>
                         <button
                           type="button"
                           onClick={() => handleReviewTicket(t.id, "reject")}
-                          className="flex-1 h-9 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          disabled={pendingActionIds.has(t.id)}
+                          className="flex-1 h-9 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <X className="w-3.5 h-3.5" />
-                          Deny
+                          {pendingActionIds.has(t.id) ? "Working..." : "Deny"}
                         </button>
                       </div>
                     </div>
@@ -852,10 +888,11 @@ export default function AdminPage() {
                           <button
                             type="button"
                             onClick={() => handleUnflagUser(u.id)}
-                            className="h-9 px-4 rounded-full bg-emerald-500/20 hover:bg-emerald-500 text-emerald-200 hover:text-black font-semibold text-xs transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
+                            disabled={pendingActionIds.has(u.id)}
+                            className="h-9 px-4 rounded-full bg-emerald-500/20 hover:bg-emerald-500 text-emerald-200 hover:text-black font-semibold text-xs transition-colors cursor-pointer flex items-center gap-1.5 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <UserCheck className="w-3.5 h-3.5" />
-                            Clear Flag
+                            {pendingActionIds.has(u.id) ? "Working..." : "Clear Flag"}
                           </button>
                         ) : (
                           <span className="text-[10px] text-white/30 shrink-0 max-w-[9rem] text-right">
@@ -1020,6 +1057,8 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
+          )}
+            </>
           )}
         </main>
       </div>
