@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, CheckCircle2 } from "lucide-react";
+import { Bell, CheckCircle2, X } from "lucide-react";
 import { isPushSupported, getNotificationPermissionStatus, requestAndSubscribePush } from "@/lib/pushNotifications";
+import { getPwaDeviceType, isStandalonePWA, getPwaInstallInstructions } from "@/lib/pwa";
 import { useAuthStore } from "@/store/useAuthStore";
 
 export default function NotificationModal() {
@@ -14,6 +15,13 @@ export default function NotificationModal() {
   const user = useAuthStore((state) => state.user);
   const syncedUserId = useRef<string | null>(null);
   const permissionStatus = getNotificationPermissionStatus();
+  // iOS Safari only exposes the Push API to a site that's been added to the
+  // Home Screen — a regular Safari tab never has `window.PushManager`, on
+  // any iOS version. "Open in a supported browser" is misleading there
+  // (every iOS browser is WebKit under the hood and has the same gap); the
+  // actual fix is installing to the Home Screen.
+  const needsHomeScreenInstall =
+    !isPushSupported() && getPwaDeviceType() === "ios" && !isStandalonePWA();
   const subscribed = Boolean(user && subscribedUserId === user.id);
   // Checked directly (not via state) so an already-subscribed user never
   // sees even a one-frame flash of this modal on reload.
@@ -115,6 +123,16 @@ export default function NotificationModal() {
             transition={{ duration: 0.3, ease: "easeOut" }}
             className="relative w-full max-w-md rounded-2xl bg-[#0c1220] p-6 text-white overflow-hidden"
           >
+            {!subscribed && (
+              <button
+                type="button"
+                onClick={handleDismiss}
+                aria-label="Close"
+                className="absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-full text-white/40 transition-colors hover:bg-white/5 hover:text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
             <div className="flex flex-col items-center text-center">
               <div className="relative mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white/[0.04] text-[#FFB6C1]">
                 <Bell className="w-7 h-7" />
@@ -141,10 +159,23 @@ export default function NotificationModal() {
                     Minglee uses notifications for Friday matches and important account updates. Enable them to continue.
                   </p>
 
-                  {!isPushSupported() && (
-                    <p role="alert" className="mt-3 text-xs text-amber-200">
-                      This browser does not support push notifications. Open Minglee in a supported browser to continue.
-                    </p>
+                  {needsHomeScreenInstall ? (
+                    <div className="mt-3 w-full rounded-xl border border-white/10 bg-white/[0.03] p-3.5 text-left">
+                      <p role="alert" className="text-xs text-amber-200">
+                        Safari only allows notifications for apps added to your Home Screen.
+                      </p>
+                      <ol className="mt-2 space-y-1 text-xs text-white/60 list-decimal list-inside">
+                        {getPwaInstallInstructions("ios").steps.map((step) => (
+                          <li key={step}>{step}</li>
+                        ))}
+                      </ol>
+                    </div>
+                  ) : (
+                    !isPushSupported() && (
+                      <p role="alert" className="mt-3 text-xs text-amber-200">
+                        This browser does not support push notifications.
+                      </p>
+                    )
                   )}
                   {getNotificationPermissionStatus() === "denied" && (
                     <p role="alert" className="mt-3 text-xs text-amber-200">
@@ -158,18 +189,20 @@ export default function NotificationModal() {
                   )}
 
                   <div className="mt-6 flex flex-col w-full gap-2.5">
-                    <button
-                      type="button"
-                      onClick={handleEnable}
-                      disabled={loading || !isPushSupported() || getNotificationPermissionStatus() === "denied"}
-                      className="h-11 w-full cursor-pointer rounded-full bg-white px-6 font-sans text-sm font-semibold text-[#0a0f1a] transition-all hover:bg-white/90 active:scale-[0.98] disabled:opacity-50"
-                    >
-                      {loading ? "Enabling..." : "Enable Required Notifications"}
-                    </button>
+                    {!needsHomeScreenInstall && (
+                      <button
+                        type="button"
+                        onClick={handleEnable}
+                        disabled={loading || !isPushSupported() || getNotificationPermissionStatus() === "denied"}
+                        className="h-11 w-full cursor-pointer rounded-full bg-white px-6 font-sans text-sm font-semibold text-[#0a0f1a] transition-all hover:bg-white/90 active:scale-[0.98] disabled:opacity-50"
+                      >
+                        {loading ? "Enabling..." : "Enable Required Notifications"}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={handleDismiss}
-                      className="h-11 w-full cursor-pointer rounded-full bg-white/5 px-6 font-sans text-sm font-semibold text-white/70 transition-all hover:bg-white/10 active:scale-[0.98]"
+                      className="h-11 w-full cursor-pointer rounded-full border border-white/15 bg-white/[0.06] px-6 font-sans text-sm font-semibold text-white/80 transition-all hover:bg-white/10 hover:text-white active:scale-[0.98]"
                     >
                       Maybe later
                     </button>
