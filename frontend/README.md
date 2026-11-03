@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Minglee — Frontend
 
-## Getting Started
+Next.js (Pages Router + App Router hybrid) Progressive Web App for Minglee. See the root [README.md](../README.md) and [APP_DOCUMENTATION.md](../APP_DOCUMENTATION.md) for product/architecture context — this file covers running and working on the frontend specifically.
 
-First, run the development server:
+## Setup
 
 ```bash
+npm install
+cp .env.local.example .env.local   # then fill in the values below
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Runs on `http://localhost:3000`. The dev server talks to the backend at `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:4000` locally).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Environment variables (`.env.local`)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_API_URL` | Base URL of the backend API. |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (client-side reads). |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/public key. |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Public VAPID key for Web Push subscriptions. |
 
-## Learn More
+## Scripts
 
-To learn more about Next.js, take a look at the following resources:
+- `npm run dev` — start the dev server (Turbopack)
+- `npm run build` — production build
+- `npm run start` — serve the production build
+- `npm run lint` — run ESLint
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `src/pages/` — route pages (Pages Router)
+- `src/app/` — PWA shell, root layout, and service worker registration (App Router)
+- `src/components/` — UI components, grouped by domain (`ui/`, `layout/`, `sections/`, `pwa/`)
+- `src/api/` — thin wrappers around backend endpoints (axios)
+- `src/store/` — Zustand state (auth, etc.)
+- `src/lib/` — shared client-side utilities
 
-## Deploy on Vercel
+## PWA
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The install flow, service worker, and offline app shell live in `src/app/register-pwa.tsx` and `src/components/pwa/`. Test installability with a production build (`npm run build && npm run start`) rather than `next dev`, since install prompts behave differently in dev mode.

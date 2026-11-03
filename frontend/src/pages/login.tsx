@@ -32,6 +32,11 @@ export default function Login() {
       if (res.access_token && res.user) {
         setAuth(res.access_token, res.user);
 
+        if (!res.user.onboarding_completed) {
+          router.push("/signup?resume=1");
+          return;
+        }
+
         // Directly route to main PWA home dashboard
         router.push("/home");
       }

@@ -1,21 +1,14 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight, CalendarDays, MapPin, Ticket, Loader2 } from "lucide-react";
-import { fetchUpcomingEvents, getEventImageUrl, DbEvent } from "@/api/events";
+import { getEventImageUrl } from "@/api/events";
+import { useUpcomingEvents } from "@/lib/useUpcomingEvents";
 
 export default function UpcomingEvents() {
-  const [events, setEvents] = useState<DbEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchUpcomingEvents().then((data) => {
-      setEvents(data);
-      setLoading(false);
-    });
-  }, []);
+  const { events, loading } = useUpcomingEvents();
 
   if (!loading && events.length === 0) return null;
 

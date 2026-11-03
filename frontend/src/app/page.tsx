@@ -13,10 +13,13 @@ import SuccessStories from "@/components/sections/SuccessStories";
 import ZigZagSeparator from "@/components/ui/ZigZagSeparator";
 import StickySection from "@/components/layout/StickySection";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useUpcomingEvents } from "@/lib/useUpcomingEvents";
 
 export default function Home() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const { events, loading: eventsLoading } = useUpcomingEvents();
+  const showUpcomingEvents = eventsLoading || events.length > 0;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -52,10 +55,12 @@ export default function Home() {
       </StickySection>
 
       {/* UPCOMING EVENTS */}
-      <StickySection className="z-35">
-        <ZigZagSeparator color="#0c1220" height={24} />
-        <UpcomingEvents />
-      </StickySection>
+      {showUpcomingEvents && (
+        <StickySection className="z-35">
+          <ZigZagSeparator color="#0c1220" height={24} />
+          <UpcomingEvents />
+        </StickySection>
+      )}
 
       {/* SUCCESS STORIES */}
       <StickySection className="z-40">

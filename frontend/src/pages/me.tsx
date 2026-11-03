@@ -73,6 +73,7 @@ export default function MePage() {
   const [photoStatus, setPhotoStatus] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [deletingPhotoIndex, setDeletingPhotoIndex] = useState<number | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -110,6 +111,8 @@ export default function MePage() {
         setBrokenPhotoIndexes(new Set());
       } catch (err) {
         console.warn("Could not load user profile:", err);
+      } finally {
+        setProfileLoading(false);
       }
     };
 
@@ -256,8 +259,9 @@ export default function MePage() {
     try {
       await API.post("/reports", {
         reported_user_id: currentPartner.id,
-        reason: reportReason,
-        details: reportDetails,
+        reason: reportDetails.trim()
+          ? `${reportReason}: ${reportDetails.trim()}`
+          : reportReason,
       });
       setReportSuccess(true);
       setTimeout(() => {
@@ -313,12 +317,6 @@ export default function MePage() {
                 Manage your identity, dating parameters, and account preferences.
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 text-xs text-white/70 border border-white/5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                Active Member
-              </span>
-            </div>
           </div>
 
           {/* Responsive Layout: 2 Columns on Desktop */}
@@ -329,7 +327,9 @@ export default function MePage() {
               <div className="rounded-2xl bg-[#0c1322] border border-white/5 p-5 space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="relative flex items-center justify-center w-16 h-16 rounded-full bg-[#141d2e] text-2xl font-serif text-white overflow-hidden shrink-0">
-                    {profilePhotos[0] && !brokenPhotoIndexes.has(0) ? (
+                    {profileLoading ? (
+                      <div className="h-full w-full animate-pulse bg-white/[0.06]" />
+                    ) : profilePhotos[0] && !brokenPhotoIndexes.has(0) ? (
                       <img
                         src={profilePhotos[0].image_url}
                         alt=""
@@ -348,9 +348,6 @@ export default function MePage() {
                       <h2 className="font-serif text-xl text-white">
                         {displayName}
                       </h2>
-                      <span className="text-[10px] uppercase font-sans font-semibold px-2 py-0.5 rounded-full bg-white/10 text-white/80">
-                        Verified
-                      </span>
                     </div>
                     <p className="text-xs text-white/50 font-sans">
                       {displayPhone}
@@ -378,7 +375,9 @@ export default function MePage() {
                       key={index}
                       className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-white/[0.04]"
                     >
-                      {profilePhotos[index] && !brokenPhotoIndexes.has(index) ? (
+                      {profileLoading ? (
+                        <div className="h-full w-full animate-pulse bg-white/[0.06]" />
+                      ) : profilePhotos[index] && !brokenPhotoIndexes.has(index) ? (
                         <img
                           src={profilePhotos[index].image_url}
                           alt={`Profile photo ${index + 1}`}

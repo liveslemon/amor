@@ -24,6 +24,8 @@ import {
   ExternalLink,
   Clock,
   Sparkles,
+  LogOut,
+  TrendingUp,
 } from "lucide-react";
 import API from "@/api/client";
 import { APP_CONFIG } from "@/config/app";
@@ -120,6 +122,14 @@ interface FlaggedUser {
   }>;
 }
 
+interface WhatsAppInquiry {
+  id: string;
+  whatsapp_number: string;
+  message: string;
+  status: string;
+  created_at: string;
+}
+
 interface RecentMatch {
   id: string;
   user1_id: string;
@@ -128,6 +138,12 @@ interface RecentMatch {
   match_week: string;
   status: string;
   created_at: string;
+}
+
+interface WeeklyActiveWeek {
+  weekStart: string;
+  weekEnd: string;
+  weeklyActiveUsers: number;
 }
 
 // Backend errors come back as { error, details } (validation details from zod);
@@ -157,7 +173,7 @@ function adminErrorText(err: unknown, fallback: string): string {
 export default function AdminPage() {
   const [adminSecret, setAdminSecret] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [activeTab, setActiveTab] = useState<"overview" | "ads" | "tickets" | "flagged" | "push">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "ads" | "tickets" | "flagged" | "whatsapp" | "push">("overview");
 
   // Telemetry data
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -169,9 +185,11 @@ export default function AdminPage() {
     ticket_boost: 0,
   });
   const [recentMatches, setRecentMatches] = useState<RecentMatch[]>([]);
+  const [weeklyActiveWeeks, setWeeklyActiveWeeks] = useState<WeeklyActiveWeek[]>([]);
   const [pendingAds, setPendingAds] = useState<PendingAd[]>([]);
   const [pendingTickets, setPendingTickets] = useState<PendingTicket[]>([]);
   const [flaggedUsers, setFlaggedUsers] = useState<FlaggedUser[]>([]);
+  const [whatsappInquiries, setWhatsappInquiries] = useState<WhatsAppInquiry[]>([]);
   const [loading, setLoading] = useState(false);
   const [actionMessage, setActionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -204,11 +222,13 @@ export default function AdminPage() {
     setLoading(true);
     try {
       const headers = { "x-admin-secret": key };
-      const [statsRes, adsRes, ticketsRes, flaggedRes] = await Promise.all([
+      const [statsRes, adsRes, ticketsRes, flaggedRes, whatsappRes, wauRes] = await Promise.all([
         API.get("/admin/stats", { headers }),
         API.get("/admin/ads/pending", { headers }),
         API.get("/admin/tickets/pending", { headers }),
         API.get("/admin/users/flagged", { headers }),
+        API.get("/admin/whatsapp-inquiries/pending", { headers }),
+        API.get("/admin/stats/weekly-active-users", { headers }),
       ]);
 
       if (statsRes.data?.success) {
@@ -231,6 +251,14 @@ export default function AdminPage() {
       if (flaggedRes.data?.data) {
         setFlaggedUsers(flaggedRes.data.data);
       }
+
+      if (whatsappRes.data?.data) {
+        setWhatsappInquiries(whatsappRes.data.data);
+      }
+
+      if (wauRes.data?.success) {
+        setWeeklyActiveWeeks(wauRes.data.weeks || []);
+      }
     } catch (err: any) {
       console.warn("Admin fetch failed:", err);
       const status = err.response?.status;
@@ -250,6 +278,13 @@ export default function AdminPage() {
       loadAllData(adminSecret);
     }
   }, [adminSecret]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("minglee-admin-key");
+    setAdminSecret("");
+    setIsAuthenticated(false);
+    setActionMessage(null);
+  };
 
   const withPendingAction = (id: string, fn: () => Promise<void>) => async () => {
     if (pendingActionIds.has(id)) return;
@@ -335,6 +370,26 @@ export default function AdminPage() {
         }
       } catch (err: any) {
         setActionMessage({ type: "error", text: adminErrorText(err, "Could not unflag user profile.") });
+      }
+    })();
+
+  // Resolve WhatsApp Inquiry (a human has followed up with the sender)
+  const handleResolveWhatsAppInquiry = (inquiryId: string) =>
+    withPendingAction(inquiryId, async () => {
+      try {
+        setActionMessage(null);
+        const res = await API.post(
+          `/admin/whatsapp-inquiries/${inquiryId}/resolve`,
+          {},
+          { headers: { "x-admin-secret": adminSecret } }
+        );
+
+        if (res.data?.success) {
+          setActionMessage({ type: "success", text: "Marked as followed up." });
+          loadAllData(adminSecret);
+        }
+      } catch (err: any) {
+        setActionMessage({ type: "error", text: adminErrorText(err, "Could not resolve this inquiry.") });
       }
     })();
 
@@ -434,6 +489,16 @@ export default function AdminPage() {
               >
                 App
               </Link>
+              {isAuthenticated && (
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="flex items-center gap-1.5 text-xs text-white/60 hover:text-red-300 transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Log out
+                </button>
+              )}
             </div>
           </div>
         </header>
@@ -500,6 +565,7 @@ export default function AdminPage() {
               { id: "ads", label: `Ads (${pendingAds.length})` },
               { id: "tickets", label: `Tickets (${pendingTickets.length})` },
               { id: "flagged", label: `Flagged Profiles (${flaggedUsers.length})` },
+              { id: "whatsapp", label: `WhatsApp Follow-ups (${whatsappInquiries.length})` },
               { id: "push", label: "Notification Dispatcher" },
             ].map((t) => (
               <button
@@ -625,6 +691,58 @@ export default function AdminPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* WEEKLY ACTIVE USERS TREND */}
+              <div className="rounded-2xl border border-white/10 bg-[#0c1322] p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-serif text-xl text-white">Weekly Active Users</h2>
+                    <p className="text-xs text-white/50 mt-0.5">
+                      Distinct users active each Monday–Sunday week, last 12 weeks.
+                    </p>
+                  </div>
+                  <span className="text-xs text-white/40 flex items-center gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5 text-[#FFB6C1]" />
+                    {weeklyActiveWeeks.length > 0
+                      ? `${weeklyActiveWeeks[weeklyActiveWeeks.length - 1].weeklyActiveUsers} this week`
+                      : "-"}
+                  </span>
+                </div>
+
+                {weeklyActiveWeeks.length === 0 ? (
+                  <div className="text-xs text-white/40 py-6 text-center">
+                    No weekly activity data yet.
+                  </div>
+                ) : (
+                  <div className="flex items-end gap-1.5 sm:gap-2 pt-2 h-32">
+                    {weeklyActiveWeeks.map((week, i) => {
+                      const max = Math.max(1, ...weeklyActiveWeeks.map((w) => w.weeklyActiveUsers));
+                      const heightPct = Math.max(4, Math.round((week.weeklyActiveUsers / max) * 100));
+                      const isCurrent = i === weeklyActiveWeeks.length - 1;
+                      return (
+                        <div
+                          key={week.weekStart}
+                          className="flex-1 flex flex-col items-center justify-end gap-1.5 group"
+                          title={`${week.weekStart} – ${week.weekEnd}: ${week.weeklyActiveUsers} active users`}
+                        >
+                          <span className="text-[10px] text-white/50 group-hover:text-white transition-colors">
+                            {week.weeklyActiveUsers}
+                          </span>
+                          <div
+                            className={`w-full rounded-t-md transition-colors ${
+                              isCurrent ? "bg-[#FFB6C1]" : "bg-white/15 group-hover:bg-white/30"
+                            }`}
+                            style={{ height: `${heightPct}%` }}
+                          />
+                          <span className="text-[9px] text-white/30">
+                            {week.weekStart.slice(5).replace("-", "/")}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* CATEGORY OF ADS USED */}
@@ -942,6 +1060,52 @@ export default function AdminPage() {
                           </div>
                         </div>
                       )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* WHATSAPP FOLLOW-UPS TAB */}
+          {activeTab === "whatsapp" && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="font-serif text-2xl text-white">WhatsApp Follow-ups</h2>
+                <p className="text-xs text-white/50 mt-0.5">
+                  Questions sent to the Minglee WhatsApp number that the auto-reply bot couldn&apos;t
+                  confidently answer, or that need a safety/account follow-up from a human. Mark one
+                  resolved once someone has replied to the sender on WhatsApp.
+                </p>
+              </div>
+
+              {whatsappInquiries.length === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-[#0c1322] p-8 text-center text-xs text-white/40">
+                  No open WhatsApp follow-ups. Every inbound message has been handled.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {whatsappInquiries.map((inquiry) => (
+                    <div
+                      key={inquiry.id}
+                      className="rounded-2xl border border-amber-500/20 bg-[#0c1322] p-5 flex items-start justify-between gap-4"
+                    >
+                      <div>
+                        <p className="text-sm text-white/90">{inquiry.message}</p>
+                        <p className="text-xs text-white/40 mt-1.5">
+                          From {inquiry.whatsapp_number} ·{" "}
+                          {new Date(inquiry.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleResolveWhatsAppInquiry(inquiry.id)}
+                        disabled={pendingActionIds.has(inquiry.id)}
+                        className="h-9 px-4 rounded-full bg-emerald-500/20 hover:bg-emerald-500 text-emerald-200 hover:text-black font-semibold text-xs transition-colors cursor-pointer flex items-center gap-1.5 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        {pendingActionIds.has(inquiry.id) ? "Working..." : "Mark Resolved"}
+                      </button>
                     </div>
                   ))}
                 </div>

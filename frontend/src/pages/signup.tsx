@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { motion } from "framer-motion";
@@ -8,11 +8,19 @@ import { signup } from "@/api/auth";
 import { completeOnboarding, getMe } from "@/api/profile";
 import { useAuthStore } from "@/store/useAuthStore";
 import { APP_CONFIG } from "@/config/app";
+import { ProfileFieldsStep1 } from "@/components/profile/ProfileFieldsStep1";
 
 export default function SignUp() {
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
-  
+  const user = useAuthStore((state) => state.user);
+
+  // An already-registered user with incomplete onboarding (e.g. their
+  // preference rows were cleared) gets sent back here by /login with
+  // ?resume=1 — reuse this same wizard, but skip account creation and jump
+  // straight into the preference steps, prefilled from whatever they have.
+  const isResume = router.query.resume === "1" && !!user;
+
   const [signupStep, setSignupStep] = useState(1);
   const [formData, setFormData] = useState({
     name: "",
@@ -39,6 +47,57 @@ export default function SignUp() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [prefilling, setPrefilling] = useState(false);
+
+  useEffect(() => {
+    if (!isResume) return;
+
+    setPrefilling(true);
+    getMe()
+      .then((data) => {
+        const profile = data?.profile;
+        const preferences = data?.preferences;
+        setFormData((prev) => ({
+          ...prev,
+          gender: profile?.gender || "",
+          age: profile?.age != null ? String(profile.age) : "",
+          build: profile?.build || "",
+          skin_tone: profile?.skin_tone || "",
+          height_ft: profile?.height?.feet != null ? String(profile.height.feet) : "",
+          height_in: profile?.height?.inches != null ? String(profile.height.inches) : "",
+          preferred_min_age:
+            preferences?.preferred_min_age != null ? String(preferences.preferred_min_age) : "",
+          preferred_max_age:
+            preferences?.preferred_max_age != null ? String(preferences.preferred_max_age) : "",
+          preferred_builds: data?.preferred_builds || [],
+          preferred_min_height_ft:
+            preferences?.preferred_min_height?.feet != null
+              ? String(preferences.preferred_min_height.feet)
+              : "",
+          preferred_min_height_in:
+            preferences?.preferred_min_height?.inches != null
+              ? String(preferences.preferred_min_height.inches)
+              : "",
+          preferred_max_height_ft:
+            preferences?.preferred_max_height?.feet != null
+              ? String(preferences.preferred_max_height.feet)
+              : "",
+          preferred_max_height_in:
+            preferences?.preferred_max_height?.inches != null
+              ? String(preferences.preferred_max_height.inches)
+              : "",
+          relationship_goal: profile?.relationship_goal || "",
+          conflict_style: profile?.conflict_style || "",
+          instagram: profile?.instagram || "",
+          tiktok: profile?.tiktok || "",
+        }));
+      })
+      .catch((err) => {
+        console.error("Could not load existing profile to resume onboarding:", err);
+      })
+      .finally(() => setPrefilling(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isResume]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,26 +109,65 @@ export default function SignUp() {
     setLoading(true);
     setError("");
 
-    // Validate
-    const trimmedName = formData.name.trim();
-    const trimmedPhone = formData.whatsapp_number.trim();
-    if (!trimmedName) {
-      setError("Name is required");
-      setLoading(false);
-      return;
-    }
-    if (trimmedPhone.length < 5) {
-      setError("A valid WhatsApp number is required");
-      setLoading(false);
-      return;
-    }
-    if (formData.password.length < 8) {
-      setError("Password must be at least 8 characters");
-      setLoading(false);
-      return;
+    if (!isResume) {
+      // Validate account-creation fields — skipped in resume mode since the
+      // account already exists.
+      const trimmedName = formData.name.trim();
+      const trimmedPhone = formData.whatsapp_number.trim();
+      if (!trimmedName) {
+        setError("Name is required");
+        setLoading(false);
+        return;
+      }
+      if (trimmedPhone.length < 5) {
+        setError("A valid WhatsApp number is required");
+        setLoading(false);
+        return;
+      }
+      if (formData.password.length < 8) {
+        setError("Password must be at least 8 characters");
+        setLoading(false);
+        return;
+      }
     }
 
+    const computeInches = (ftStr: string, inStr: string) => {
+      if (!ftStr && !inStr) return undefined;
+      const ft = ftStr ? parseInt(ftStr, 10) : 0;
+      const ins = inStr ? parseInt(inStr, 10) : 0;
+      return ft * 12 + ins;
+    };
+
+    const onboardingPayload = {
+      profile: {
+        gender: formData.gender || undefined,
+        age: formData.age ? parseInt(formData.age, 10) : undefined,
+        build: formData.build || undefined,
+        skin_tone: formData.skin_tone || undefined,
+        height: computeInches(formData.height_ft, formData.height_in),
+        relationship_goal: formData.relationship_goal || undefined,
+        conflict_style: formData.conflict_style || undefined,
+        instagram: formData.instagram || undefined,
+        tiktok: formData.tiktok || undefined,
+      },
+      preferences: {
+        preferred_min_age: formData.preferred_min_age ? parseInt(formData.preferred_min_age, 10) : undefined,
+        preferred_max_age: formData.preferred_max_age ? parseInt(formData.preferred_max_age, 10) : undefined,
+        preferred_min_height: computeInches(formData.preferred_min_height_ft, formData.preferred_min_height_in),
+        preferred_max_height: computeInches(formData.preferred_max_height_ft, formData.preferred_max_height_in),
+      },
+      preferred_builds: formData.preferred_builds.length > 0 ? formData.preferred_builds : undefined,
+    };
+
     try {
+      if (isResume) {
+        await completeOnboarding(onboardingPayload);
+        router.replace("/home");
+        return;
+      }
+
+      const trimmedName = formData.name.trim();
+      const trimmedPhone = formData.whatsapp_number.trim();
       const res = await signup({
         name: trimmedName,
         whatsapp_number: `+234${trimmedPhone}`,
@@ -78,44 +176,17 @@ export default function SignUp() {
 
       if (res.access_token && res.user) {
         setAuth(res.access_token, res.user);
+        await completeOnboarding(onboardingPayload);
 
-        const computeInches = (ftStr: string, inStr: string) => {
-            if (!ftStr && !inStr) return undefined;
-            const ft = ftStr ? parseInt(ftStr, 10) : 0;
-            const ins = inStr ? parseInt(inStr, 10) : 0;
-            return (ft * 12) + ins;
-          };
-
-          await completeOnboarding({
-            profile: {
-              gender: formData.gender || undefined,
-              age: formData.age ? parseInt(formData.age, 10) : undefined,
-              build: formData.build || undefined,
-              skin_tone: formData.skin_tone || undefined,
-              height: computeInches(formData.height_ft, formData.height_in),
-              relationship_goal: formData.relationship_goal || undefined,
-              conflict_style: formData.conflict_style || undefined,
-              instagram: formData.instagram || undefined,
-              tiktok: formData.tiktok || undefined,
-            },
-            preferences: {
-              preferred_min_age: formData.preferred_min_age ? parseInt(formData.preferred_min_age, 10) : undefined,
-              preferred_max_age: formData.preferred_max_age ? parseInt(formData.preferred_max_age, 10) : undefined,
-              preferred_min_height: computeInches(formData.preferred_min_height_ft, formData.preferred_min_height_in),
-              preferred_max_height: computeInches(formData.preferred_max_height_ft, formData.preferred_max_height_in),
-            },
-            preferred_builds: formData.preferred_builds.length > 0 ? formData.preferred_builds : undefined,
-          });
-
-          // Redirect directly to main PWA home dashboard
-          router.replace("/home");
+        // Redirect directly to main PWA home dashboard
+        router.replace("/home");
       }
     } catch (err: any) {
       setError(
         err.response?.data?.message ||
           err.response?.data?.error ||
           err.message ||
-          "Signup failed",
+          (isResume ? "Could not save your profile" : "Signup failed"),
       );
     } finally {
       setLoading(false);
@@ -154,14 +225,26 @@ export default function SignUp() {
 
             <div className="text-center mb-8">
               <h1 className="text-3xl md:text-4xl font-serif tracking-tight leading-[1.1] mb-4">
-                Create your <br />
-                <span className="italic font-light text-white/90">
-                  {APP_CONFIG.name} Profile
-                </span>
+                {isResume ? (
+                  <>
+                    Finish your <br />
+                    <span className="italic font-light text-white/90">
+                      {APP_CONFIG.name} Profile
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    Create your <br />
+                    <span className="italic font-light text-white/90">
+                      {APP_CONFIG.name} Profile
+                    </span>
+                  </>
+                )}
               </h1>
               <p className="text-sm md:text-base text-white/50 font-sans font-light max-w-md mx-auto leading-relaxed">
-                Join the waitlist and let our algorithm curate your perfect Friday
-                date. No swiping. No ghosting.
+                {isResume
+                  ? "A few details are missing from your profile — fill these back in to get matched again."
+                  : "Join the waitlist and let our algorithm curate your perfect Friday date. No swiping. No ghosting."}
               </p>
             </div>
 
@@ -177,108 +260,30 @@ export default function SignUp() {
 
               {signupStep === 1 && (
                 <div className="grid gap-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Full Name</label>
-                      <input required type="text" placeholder="Your full name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-4 py-3 text-white text-base outline-none focus:border-white/30 transition-colors" />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">WhatsApp Number</label>
-                      <div className="flex w-full">
-                        <span className="bg-[#0a0f1a]/50 border border-white/10 border-r-0 rounded-l-xl px-3 py-3 text-white/70 text-sm flex items-center shrink-0">🇳🇬 +234</span>
-                        <input required type="tel" inputMode="numeric" placeholder="8012345678" value={formData.whatsapp_number} onChange={(e) => setFormData({ ...formData, whatsapp_number: e.target.value.replace(/[^0-9]/g, "") })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-r-xl px-4 py-3 text-white text-base outline-none focus:border-white/30 transition-colors" />
+                  {prefilling && (
+                    <p className="text-xs text-white/40 text-center">Loading your existing profile…</p>
+                  )}
+
+                  {!isResume && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Full Name</label>
+                        <input required type="text" placeholder="Your full name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-4 py-3 text-white text-base outline-none focus:border-white/30 transition-colors" />
                       </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Gender</label>
-                      <select required value={formData.gender} onChange={(e) => setFormData({ ...formData, gender: e.target.value })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-4 py-3 text-white text-base outline-none focus:border-white/30 transition-colors appearance-none">
-                        <option value="" disabled>Select gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Age</label>
-                      <input required type="number" min="18" placeholder="e.g. 23" value={formData.age} onChange={(e) => setFormData({ ...formData, age: e.target.value })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-4 py-3 text-white text-base outline-none focus:border-white/30 transition-colors" />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Build</label>
-                      <select required value={formData.build} onChange={(e) => setFormData({ ...formData, build: e.target.value })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-4 py-3 text-white text-base outline-none focus:border-white/30 transition-colors appearance-none">
-                        <option value="" disabled>Select build</option>
-                        <option value="Slim">Slim</option>
-                        <option value="Petite">Petite</option>
-                        <option value="Athletic">Athletic</option>
-                        <option value="Average">Average</option>
-                        <option value="Muscular">Muscular</option>
-                        <option value="Curvy">Curvy</option>
-                        <option value="Plus-size">Plus-size</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Skin Tone</label>
-                      <select required value={formData.skin_tone} onChange={(e) => setFormData({ ...formData, skin_tone: e.target.value })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-4 py-3 text-white text-base outline-none focus:border-white/30 transition-colors appearance-none">
-                        <option value="" disabled>Select tone</option>
-                        <option value="Fair">Fair</option>
-                        <option value="Tan">Tan</option>
-                        <option value="Brown">Brown</option>
-                        <option value="Dark">Dark</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Height</label>
-                      <div className="flex gap-2 w-full">
-                        <div className="relative flex-1">
-                          <input required type="number" min="3" max="8" placeholder="Ft" value={formData.height_ft} onChange={(e) => setFormData({ ...formData, height_ft: e.target.value })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl pl-3 pr-6 py-3 text-white text-base outline-none focus:border-white/30 transition-colors" />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white/40">ft</span>
-                        </div>
-                        <div className="relative flex-1">
-                          <input required type="number" min="0" max="11" placeholder="In" value={formData.height_in} onChange={(e) => setFormData({ ...formData, height_in: e.target.value })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl pl-3 pr-6 py-3 text-white text-base outline-none focus:border-white/30 transition-colors" />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white/40">in</span>
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">WhatsApp Number</label>
+                        <div className="flex w-full">
+                          <span className="bg-[#0a0f1a]/50 border border-white/10 border-r-0 rounded-l-xl px-3 py-3 text-white/70 text-sm flex items-center shrink-0">🇳🇬 +234</span>
+                          <input required type="tel" inputMode="numeric" placeholder="8012345678" value={formData.whatsapp_number} onChange={(e) => setFormData({ ...formData, whatsapp_number: e.target.value.replace(/[^0-9]/g, "") })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-r-xl px-4 py-3 text-white text-base outline-none focus:border-white/30 transition-colors" />
                         </div>
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Pref Age Range</label>
-                      <div className="flex gap-2 w-full">
-                        <input required type="number" min="18" placeholder="Min" value={formData.preferred_min_age} onChange={(e) => setFormData({ ...formData, preferred_min_age: e.target.value })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-3 py-3 text-white text-base outline-none focus:border-white/30 transition-colors" />
-                        <input required type="number" min="18" placeholder="Max" value={formData.preferred_max_age} onChange={(e) => setFormData({ ...formData, preferred_max_age: e.target.value })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-3 py-3 text-white text-base outline-none focus:border-white/30 transition-colors" />
-                      </div>
-                    </div>
-                  </div>
+                  )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Pref Body Type</label>
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        {["Slim", "Petite", "Athletic", "Average", "Muscular", "Curvy", "Plus-size"].map(b => (
-                          <button key={b} type="button" onClick={() => setFormData({ ...formData, preferred_builds: formData.preferred_builds.includes(b) ? formData.preferred_builds.filter(x => x !== b) : [...formData.preferred_builds, b] })} className={`text-[11px] px-3 py-1.5 rounded-full border transition-colors ${formData.preferred_builds.includes(b) ? 'bg-[#ff5fb8]/20 border-[#ff5fb8]/50 text-[#ff5fb8]' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'}`}>{b}</button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Pref Height</label>
-                      <div className="flex gap-2 w-full items-center">
-                        <div className="flex-1 flex gap-1">
-                          <input required type="number" min="3" max="8" placeholder="Ft" value={formData.preferred_min_height_ft} onChange={(e) => setFormData({ ...formData, preferred_min_height_ft: e.target.value })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-2 py-3 text-white text-base outline-none focus:border-white/30 transition-colors text-center" />
-                          <input required type="number" min="0" max="11" placeholder="In" value={formData.preferred_min_height_in} onChange={(e) => setFormData({ ...formData, preferred_min_height_in: e.target.value })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-2 py-3 text-white text-base outline-none focus:border-white/30 transition-colors text-center" />
-                        </div>
-                        <span className="text-white/30 text-xs">-</span>
-                        <div className="flex-1 flex gap-1">
-                          <input required type="number" min="3" max="8" placeholder="Ft" value={formData.preferred_max_height_ft} onChange={(e) => setFormData({ ...formData, preferred_max_height_ft: e.target.value })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-2 py-3 text-white text-base outline-none focus:border-white/30 transition-colors text-center" />
-                          <input required type="number" min="0" max="11" placeholder="In" value={formData.preferred_max_height_in} onChange={(e) => setFormData({ ...formData, preferred_max_height_in: e.target.value })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-2 py-3 text-white text-base outline-none focus:border-white/30 transition-colors text-center" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <ProfileFieldsStep1
+                    value={formData}
+                    onChange={(patch) => setFormData({ ...formData, ...patch })}
+                  />
                 </div>
               )}
 
@@ -317,10 +322,12 @@ export default function SignUp() {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Password</label>
-                    <input required type="password" placeholder="Create a strong password" minLength={8} value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-4 py-3 text-white text-base outline-none focus:border-white/30 transition-colors" />
-                  </div>
+                  {!isResume && (
+                    <div>
+                      <label className="block text-[11px] uppercase tracking-wider text-white/50 mb-1.5 ml-1">Password</label>
+                      <input required type="password" placeholder="Create a strong password" minLength={8} value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="w-full bg-[#0a0f1a]/50 border border-white/10 rounded-xl px-4 py-3 text-white text-base outline-none focus:border-white/30 transition-colors" />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -348,7 +355,7 @@ export default function SignUp() {
                     </>
                   ) : (
                     <>
-                      <span>Complete Registration</span>
+                      <span>{isResume ? "Save Profile" : "Complete Registration"}</span>
                       <CheckCircle2 className="w-5 h-5 text-[#ff5fb8]" />
                     </>
                   )}
@@ -356,15 +363,17 @@ export default function SignUp() {
               </div>
             </form>
 
-            <div className="mt-8 text-sm text-white/40 text-center">
-              Already have an account?{" "}
-              <Link
-                href="/login"
-                className="text-white hover:underline underline-offset-4 transition-all"
-              >
-                Log In
-              </Link>
-            </div>
+            {!isResume && (
+              <div className="mt-8 text-sm text-white/40 text-center">
+                Already have an account?{" "}
+                <Link
+                  href="/login"
+                  className="text-white hover:underline underline-offset-4 transition-all"
+                >
+                  Log In
+                </Link>
+              </div>
+            )}
           </motion.div>
         </div>
       </div>

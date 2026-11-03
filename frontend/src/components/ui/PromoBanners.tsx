@@ -27,7 +27,7 @@ interface Promo {
 interface LiveAd {
   id: string;
   title: string;
-  subtitle?: string;
+  text_content?: string;
   image_url?: string;
   target_url: string;
 }
@@ -89,7 +89,7 @@ export default function PromoBanners({ className = "" }: PromoBannersProps) {
         const liveBanners: Promo[] = ads.map((ad) => ({
           id: String(ad.id),
           title: ad.title,
-          description: ad.subtitle || "A promotion picked for the Minglee community.",
+          description: ad.text_content || "A promotion picked for the Minglee community.",
           image_url: ad.image_url,
           target_url: ad.target_url,
           label: "Promotion",
