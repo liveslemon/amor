@@ -24,6 +24,8 @@ import {
   ExternalLink,
   Clock,
   Sparkles,
+  LogOut,
+  TrendingUp,
 } from "lucide-react";
 import API from "@/api/client";
 import { APP_CONFIG } from "@/config/app";
@@ -97,6 +99,8 @@ interface FlaggedUser {
   role: string;
   is_flagged: boolean;
   flag_reason?: string;
+  open_report_count?: number;
+  open_report_reasons?: string[];
   created_at: string;
   user_profiles?: {
     gender?: string;
@@ -118,6 +122,14 @@ interface FlaggedUser {
   }>;
 }
 
+interface WhatsAppInquiry {
+  id: string;
+  whatsapp_number: string;
+  message: string;
+  status: string;
+  created_at: string;
+}
+
 interface RecentMatch {
   id: string;
   user1_id: string;
@@ -128,10 +140,40 @@ interface RecentMatch {
   created_at: string;
 }
 
+interface WeeklyActiveWeek {
+  weekStart: string;
+  weekEnd: string;
+  weeklyActiveUsers: number;
+}
+
+// Backend errors come back as { error, details } (validation details from zod);
+// some endpoints use message or reason instead.
+type ApiErrorBody = {
+  error?: string;
+  message?: string;
+  reason?: string;
+  details?: { formErrors?: string[]; fieldErrors?: Record<string, string[]> };
+};
+
+function adminErrorText(err: unknown, fallback: string): string {
+  const e = err as { message?: string; response?: { data?: ApiErrorBody } } | undefined;
+  const data = e?.response?.data;
+  if (!data) return e?.message ? `${fallback} (${e.message})` : fallback;
+  const base = data.reason || data.message || data.error || fallback;
+  const details = data.details;
+  const problems = [
+    ...(details?.formErrors ?? []),
+    ...Object.entries(details?.fieldErrors ?? {}).map(
+      ([field, msgs]) => `${field}: ${msgs.join(", ")}`,
+    ),
+  ];
+  return problems.length ? `${base} (${problems.join("; ")})` : base;
+}
+
 export default function AdminPage() {
   const [adminSecret, setAdminSecret] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [activeTab, setActiveTab] = useState<"overview" | "ads" | "tickets" | "flagged" | "push">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "ads" | "tickets" | "flagged" | "whatsapp" | "push">("overview");
 
   // Telemetry data
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -143,9 +185,11 @@ export default function AdminPage() {
     ticket_boost: 0,
   });
   const [recentMatches, setRecentMatches] = useState<RecentMatch[]>([]);
+  const [weeklyActiveWeeks, setWeeklyActiveWeeks] = useState<WeeklyActiveWeek[]>([]);
   const [pendingAds, setPendingAds] = useState<PendingAd[]>([]);
   const [pendingTickets, setPendingTickets] = useState<PendingTicket[]>([]);
   const [flaggedUsers, setFlaggedUsers] = useState<FlaggedUser[]>([]);
+  const [whatsappInquiries, setWhatsappInquiries] = useState<WhatsAppInquiry[]>([]);
   const [loading, setLoading] = useState(false);
   const [actionMessage, setActionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -159,6 +203,9 @@ export default function AdminPage() {
 
   // Matching trigger state
   const [runningMatch, setRunningMatch] = useState(false);
+
+  // Tracks ids currently mid-request, so approve/reject/unflag buttons can't be spammed.
+  const [pendingActionIds, setPendingActionIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -175,11 +222,13 @@ export default function AdminPage() {
     setLoading(true);
     try {
       const headers = { "x-admin-secret": key };
-      const [statsRes, adsRes, ticketsRes, flaggedRes] = await Promise.all([
+      const [statsRes, adsRes, ticketsRes, flaggedRes, whatsappRes, wauRes] = await Promise.all([
         API.get("/admin/stats", { headers }),
         API.get("/admin/ads/pending", { headers }),
         API.get("/admin/tickets/pending", { headers }),
         API.get("/admin/users/flagged", { headers }),
+        API.get("/admin/whatsapp-inquiries/pending", { headers }),
+        API.get("/admin/stats/weekly-active-users", { headers }),
       ]);
 
       if (statsRes.data?.success) {
@@ -202,8 +251,23 @@ export default function AdminPage() {
       if (flaggedRes.data?.data) {
         setFlaggedUsers(flaggedRes.data.data);
       }
+
+      if (whatsappRes.data?.data) {
+        setWhatsappInquiries(whatsappRes.data.data);
+      }
+
+      if (wauRes.data?.success) {
+        setWeeklyActiveWeeks(wauRes.data.weeks || []);
+      }
     } catch (err: any) {
       console.warn("Admin fetch failed:", err);
+      const status = err.response?.status;
+      if (status === 401 || status === 503) {
+        // Wrong secret, or ADMIN_SECRET isn't set on the server.
+        localStorage.removeItem("minglee-admin-key");
+        setIsAuthenticated(false);
+      }
+      setActionMessage({ type: "error", text: adminErrorText(err, "Could not load admin data") });
     } finally {
       setLoading(false);
     }
@@ -215,75 +279,119 @@ export default function AdminPage() {
     }
   }, [adminSecret]);
 
-  // Review Ad (Approve / Deny)
-  const handleReviewAd = async (adId: string, action: "approve" | "reject", reason?: string) => {
-    try {
-      setActionMessage(null);
-      const res = await API.post(
-        `/admin/ads/${adId}/review`,
-        {
-          action,
-          rejection_reason: reason || (action === "reject" ? "Clashing of dates with another advert" : undefined),
-        },
-        { headers: { "x-admin-secret": adminSecret } }
-      );
+  const handleLogout = () => {
+    localStorage.removeItem("minglee-admin-key");
+    setAdminSecret("");
+    setIsAuthenticated(false);
+    setActionMessage(null);
+  };
 
-      if (res.data?.success) {
-        setActionMessage({
-          type: "success",
-          text: `Advertisement ${action === "approve" ? "approved" : "denied successfully"}.`,
-        });
-        loadAllData(adminSecret);
-      }
-    } catch (err: any) {
-      const errMsg =
-        err.response?.data?.reason ||
-        err.response?.data?.message ||
-        (err.response?.status === 409 ? "Clashing of dates with another advert" : "Review action failed");
-      setActionMessage({ type: "error", text: errMsg });
+  const withPendingAction = (id: string, fn: () => Promise<void>) => async () => {
+    if (pendingActionIds.has(id)) return;
+    setPendingActionIds((prev) => new Set(prev).add(id));
+    try {
+      await fn();
+    } finally {
+      setPendingActionIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     }
   };
+
+  // Review Ad (Approve / Deny)
+  const handleReviewAd = (adId: string, action: "approve" | "reject", reason?: string) =>
+    withPendingAction(adId, async () => {
+      try {
+        setActionMessage(null);
+        const res = await API.post(
+          `/admin/ads/${adId}/review`,
+          {
+            action,
+            rejection_reason: reason || (action === "reject" ? "Clashing of dates with another advert" : undefined),
+          },
+          { headers: { "x-admin-secret": adminSecret } }
+        );
+
+        if (res.data?.success) {
+          setActionMessage({
+            type: "success",
+            text: `Advertisement ${action === "approve" ? "approved" : "denied successfully"}.`,
+          });
+          loadAllData(adminSecret);
+        }
+      } catch (err: any) {
+        const errMsg =
+          err.response?.status === 409 && !err.response?.data?.reason
+            ? "Clashing of dates with another advert"
+            : adminErrorText(err, "Review action failed");
+        setActionMessage({ type: "error", text: errMsg });
+      }
+    })();
 
   // Review Ticket (Approve / Deny)
-  const handleReviewTicket = async (ticketId: string, action: "approve" | "reject") => {
-    try {
-      setActionMessage(null);
-      const res = await API.post(
-        `/admin/tickets/${ticketId}/review`,
-        { action },
-        { headers: { "x-admin-secret": adminSecret } }
-      );
+  const handleReviewTicket = (ticketId: string, action: "approve" | "reject") =>
+    withPendingAction(ticketId, async () => {
+      try {
+        setActionMessage(null);
+        const res = await API.post(
+          `/admin/tickets/${ticketId}/review`,
+          { action },
+          { headers: { "x-admin-secret": adminSecret } }
+        );
 
-      if (res.data?.success) {
-        setActionMessage({
-          type: "success",
-          text: `Ticket event ${action === "approve" ? "approved" : "rejected"}.`,
-        });
-        loadAllData(adminSecret);
+        if (res.data?.success) {
+          setActionMessage({
+            type: "success",
+            text: `Ticket event ${action === "approve" ? "approved" : "rejected"}.`,
+          });
+          loadAllData(adminSecret);
+        }
+      } catch (err: any) {
+        setActionMessage({ type: "error", text: adminErrorText(err, "Ticket review failed") });
       }
-    } catch (err: any) {
-      setActionMessage({ type: "error", text: "Ticket review failed" });
-    }
-  };
+    })();
 
   // Unflag User Profile
-  const handleUnflagUser = async (userId: string) => {
-    try {
-      setActionMessage(null);
-      const res = await API.post(
-        `/admin/users/${userId}/flag`,
-        { is_flagged: false, flag_reason: null },
-        { headers: { "x-admin-secret": adminSecret } }
-      );
+  const handleUnflagUser = (userId: string) =>
+    withPendingAction(userId, async () => {
+      try {
+        setActionMessage(null);
+        const res = await API.post(
+          `/admin/users/${userId}/flag`,
+          { is_flagged: false, flag_reason: null },
+          { headers: { "x-admin-secret": adminSecret } }
+        );
 
-      if (res.data?.success) {
-        setActionMessage({ type: "success", text: "User profile unflagged and restored to good standing." });
-        loadAllData(adminSecret);
+        if (res.data?.success) {
+          setActionMessage({ type: "success", text: "User profile unflagged and restored to good standing." });
+          loadAllData(adminSecret);
+        }
+      } catch (err: any) {
+        setActionMessage({ type: "error", text: adminErrorText(err, "Could not unflag user profile.") });
       }
-    } catch (err: any) {
-      setActionMessage({ type: "error", text: "Could not unflag user profile." });
-    }
-  };
+    })();
+
+  // Resolve WhatsApp Inquiry (a human has followed up with the sender)
+  const handleResolveWhatsAppInquiry = (inquiryId: string) =>
+    withPendingAction(inquiryId, async () => {
+      try {
+        setActionMessage(null);
+        const res = await API.post(
+          `/admin/whatsapp-inquiries/${inquiryId}/resolve`,
+          {},
+          { headers: { "x-admin-secret": adminSecret } }
+        );
+
+        if (res.data?.success) {
+          setActionMessage({ type: "success", text: "Marked as followed up." });
+          loadAllData(adminSecret);
+        }
+      } catch (err: any) {
+        setActionMessage({ type: "error", text: adminErrorText(err, "Could not resolve this inquiry.") });
+      }
+    })();
 
   // Broadcast Custom Notification
   const handleSendNotification = async (e: React.FormEvent) => {
@@ -315,7 +423,7 @@ export default function AdminPage() {
     } catch (err: any) {
       setActionMessage({
         type: "error",
-        text: err.response?.data?.message || "Failed to dispatch notification.",
+        text: adminErrorText(err, "Failed to dispatch notification."),
       });
     } finally {
       setSendingPush(false);
@@ -339,11 +447,11 @@ export default function AdminPage() {
 
       setActionMessage({
         type: "success",
-        text: "Matching cycle complete! Pairings generated and verified.",
+        text: res.data?.message || "Matching cycle complete.",
       });
       loadAllData(adminSecret);
     } catch (err: any) {
-      setActionMessage({ type: "error", text: "Matching cycle failed" });
+      setActionMessage({ type: "error", text: adminErrorText(err, "Matching cycle failed") });
     } finally {
       setRunningMatch(false);
     }
@@ -381,6 +489,16 @@ export default function AdminPage() {
               >
                 App
               </Link>
+              {isAuthenticated && (
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="flex items-center gap-1.5 text-xs text-white/60 hover:text-red-300 transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Log out
+                </button>
+              )}
             </div>
           </div>
         </header>
@@ -428,6 +546,18 @@ export default function AdminPage() {
             </div>
           )}
 
+          {!isAuthenticated && (
+            <div className="rounded-2xl border border-white/10 bg-[#0c1322] p-10 text-center">
+              <Lock className="mx-auto mb-3 h-6 w-6 text-[#FFB6C1]" />
+              <p className="text-sm text-white/70">
+                Enter the admin secret above and select &quot;Verify &amp;
+                Refresh&quot; to access the dashboard.
+              </p>
+            </div>
+          )}
+
+          {isAuthenticated && (
+            <>
           {/* Tab Selection */}
           <nav className="flex gap-2 border-b border-white/10 pb-3 overflow-x-auto">
             {[
@@ -435,6 +565,7 @@ export default function AdminPage() {
               { id: "ads", label: `Ads (${pendingAds.length})` },
               { id: "tickets", label: `Tickets (${pendingTickets.length})` },
               { id: "flagged", label: `Flagged Profiles (${flaggedUsers.length})` },
+              { id: "whatsapp", label: `WhatsApp Follow-ups (${whatsappInquiries.length})` },
               { id: "push", label: "Notification Dispatcher" },
             ].map((t) => (
               <button
@@ -562,6 +693,58 @@ export default function AdminPage() {
                 </div>
               </div>
 
+              {/* WEEKLY ACTIVE USERS TREND */}
+              <div className="rounded-2xl border border-white/10 bg-[#0c1322] p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-serif text-xl text-white">Weekly Active Users</h2>
+                    <p className="text-xs text-white/50 mt-0.5">
+                      Distinct users active each Monday–Sunday week, last 12 weeks.
+                    </p>
+                  </div>
+                  <span className="text-xs text-white/40 flex items-center gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5 text-[#FFB6C1]" />
+                    {weeklyActiveWeeks.length > 0
+                      ? `${weeklyActiveWeeks[weeklyActiveWeeks.length - 1].weeklyActiveUsers} this week`
+                      : "-"}
+                  </span>
+                </div>
+
+                {weeklyActiveWeeks.length === 0 ? (
+                  <div className="text-xs text-white/40 py-6 text-center">
+                    No weekly activity data yet.
+                  </div>
+                ) : (
+                  <div className="flex items-end gap-1.5 sm:gap-2 pt-2 h-32">
+                    {weeklyActiveWeeks.map((week, i) => {
+                      const max = Math.max(1, ...weeklyActiveWeeks.map((w) => w.weeklyActiveUsers));
+                      const heightPct = Math.max(4, Math.round((week.weeklyActiveUsers / max) * 100));
+                      const isCurrent = i === weeklyActiveWeeks.length - 1;
+                      return (
+                        <div
+                          key={week.weekStart}
+                          className="flex-1 flex flex-col items-center justify-end gap-1.5 group"
+                          title={`${week.weekStart} – ${week.weekEnd}: ${week.weeklyActiveUsers} active users`}
+                        >
+                          <span className="text-[10px] text-white/50 group-hover:text-white transition-colors">
+                            {week.weeklyActiveUsers}
+                          </span>
+                          <div
+                            className={`w-full rounded-t-md transition-colors ${
+                              isCurrent ? "bg-[#FFB6C1]" : "bg-white/15 group-hover:bg-white/30"
+                            }`}
+                            style={{ height: `${heightPct}%` }}
+                          />
+                          <span className="text-[9px] text-white/30">
+                            {week.weekStart.slice(5).replace("-", "/")}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               {/* CATEGORY OF ADS USED */}
               <div className="rounded-2xl border border-white/10 bg-[#0c1322] p-6 space-y-4">
                 <div>
@@ -664,18 +847,20 @@ export default function AdminPage() {
                         <button
                           type="button"
                           onClick={() => handleReviewAd(ad.id, "approve")}
-                          className="flex-1 h-9 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          disabled={pendingActionIds.has(ad.id)}
+                          className="flex-1 h-9 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <Check className="w-3.5 h-3.5" />
-                          Approve
+                          {pendingActionIds.has(ad.id) ? "Working..." : "Approve"}
                         </button>
                         <button
                           type="button"
                           onClick={() => handleReviewAd(ad.id, "reject", "Clashing of dates with another advert")}
-                          className="flex-1 h-9 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          disabled={pendingActionIds.has(ad.id)}
+                          className="flex-1 h-9 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <X className="w-3.5 h-3.5" />
-                          Deny (Clash)
+                          {pendingActionIds.has(ad.id) ? "Working..." : "Deny (Clash)"}
                         </button>
                       </div>
                     </div>
@@ -743,18 +928,20 @@ export default function AdminPage() {
                         <button
                           type="button"
                           onClick={() => handleReviewTicket(t.id, "approve")}
-                          className="flex-1 h-9 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          disabled={pendingActionIds.has(t.id)}
+                          className="flex-1 h-9 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <Check className="w-3.5 h-3.5" />
-                          Approve Ticket
+                          {pendingActionIds.has(t.id) ? "Working..." : "Approve Ticket"}
                         </button>
                         <button
                           type="button"
                           onClick={() => handleReviewTicket(t.id, "reject")}
-                          className="flex-1 h-9 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          disabled={pendingActionIds.has(t.id)}
+                          className="flex-1 h-9 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <X className="w-3.5 h-3.5" />
-                          Deny
+                          {pendingActionIds.has(t.id) ? "Working..." : "Deny"}
                         </button>
                       </div>
                     </div>
@@ -787,28 +974,49 @@ export default function AdminPage() {
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="font-serif text-xl text-white">{u.name}</h3>
-                            <span className="rounded-full bg-red-500/20 border border-red-500/30 px-2 py-0.5 text-[10px] font-semibold text-red-300">
-                              FLAGGED
-                            </span>
+                            {u.is_flagged && (
+                              <span className="rounded-full bg-red-500/20 border border-red-500/30 px-2 py-0.5 text-[10px] font-semibold text-red-300">
+                                FLAGGED
+                              </span>
+                            )}
+                            {!!u.open_report_count && (
+                              <span className="rounded-full bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+                                {u.open_report_count} OPEN REPORT{u.open_report_count === 1 ? "" : "S"}
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs text-white/40 mt-1">
                             WhatsApp: {u.whatsapp_number} · User ID: {u.id.slice(0, 8)}...
                           </p>
-                          <p className="text-xs text-red-200 mt-2 bg-red-500/10 p-2.5 rounded-lg border border-red-500/20">
-                            Reason: {u.flag_reason || "Reported for community policy review"}
-                          </p>
+                          {u.is_flagged && (
+                            <p className="text-xs text-red-200 mt-2 bg-red-500/10 p-2.5 rounded-lg border border-red-500/20">
+                              Flag reason: {u.flag_reason || "Flagged by administrator"}
+                            </p>
+                          )}
+                          {!!u.open_report_reasons?.length && (
+                            <p className="text-xs text-amber-200 mt-2 bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20">
+                              Reported for: {u.open_report_reasons.join(", ")}
+                            </p>
+                          )}
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleUnflagUser(u.id)}
-                          className="h-9 px-4 rounded-full bg-emerald-500/20 hover:bg-emerald-500 text-emerald-200 hover:text-black font-semibold text-xs transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
-                        >
-                          <UserCheck className="w-3.5 h-3.5" />
-                          Clear Flag
-                        </button>
+                        {u.is_flagged ? (
+                          <button
+                            type="button"
+                            onClick={() => handleUnflagUser(u.id)}
+                            disabled={pendingActionIds.has(u.id)}
+                            className="h-9 px-4 rounded-full bg-emerald-500/20 hover:bg-emerald-500 text-emerald-200 hover:text-black font-semibold text-xs transition-colors cursor-pointer flex items-center gap-1.5 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <UserCheck className="w-3.5 h-3.5" />
+                            {pendingActionIds.has(u.id) ? "Working..." : "Clear Flag"}
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-white/30 shrink-0 max-w-[9rem] text-right">
+                            Not admin-flagged. Reports stay listed until resolved.
+                          </span>
+                        )}
                       </div>
 
                       {/* Profile Photos (Downscaled, strictly max 2 images) */}
@@ -852,6 +1060,52 @@ export default function AdminPage() {
                           </div>
                         </div>
                       )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* WHATSAPP FOLLOW-UPS TAB */}
+          {activeTab === "whatsapp" && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="font-serif text-2xl text-white">WhatsApp Follow-ups</h2>
+                <p className="text-xs text-white/50 mt-0.5">
+                  Questions sent to the Minglee WhatsApp number that the auto-reply bot couldn&apos;t
+                  confidently answer, or that need a safety/account follow-up from a human. Mark one
+                  resolved once someone has replied to the sender on WhatsApp.
+                </p>
+              </div>
+
+              {whatsappInquiries.length === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-[#0c1322] p-8 text-center text-xs text-white/40">
+                  No open WhatsApp follow-ups. Every inbound message has been handled.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {whatsappInquiries.map((inquiry) => (
+                    <div
+                      key={inquiry.id}
+                      className="rounded-2xl border border-amber-500/20 bg-[#0c1322] p-5 flex items-start justify-between gap-4"
+                    >
+                      <div>
+                        <p className="text-sm text-white/90">{inquiry.message}</p>
+                        <p className="text-xs text-white/40 mt-1.5">
+                          From {inquiry.whatsapp_number} ·{" "}
+                          {new Date(inquiry.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleResolveWhatsAppInquiry(inquiry.id)}
+                        disabled={pendingActionIds.has(inquiry.id)}
+                        className="h-9 px-4 rounded-full bg-emerald-500/20 hover:bg-emerald-500 text-emerald-200 hover:text-black font-semibold text-xs transition-colors cursor-pointer flex items-center gap-1.5 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        {pendingActionIds.has(inquiry.id) ? "Working..." : "Mark Resolved"}
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -967,6 +1221,8 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
+          )}
+            </>
           )}
         </main>
       </div>

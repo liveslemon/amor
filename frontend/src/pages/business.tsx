@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import {
   ArrowLeft,
   ImagePlus,
@@ -20,7 +21,6 @@ import {
 import axios from "axios";
 import API from "@/api/client";
 import { APP_CONFIG } from "@/config/app";
-import { useAuthStore } from "@/store/useAuthStore";
 import { optimizeImage } from "@/lib/imageOptimization";
 
 type BusinessTab = "ads" | "tickets" | "notifications";
@@ -57,15 +57,32 @@ interface EventRecord {
   attendee_count?: number;
 }
 
+type ApiErrorBody = {
+  message?: string;
+  error?: string;
+  reason?: string;
+  details?: { formErrors?: string[]; fieldErrors?: Record<string, string[]> };
+};
+
+// Validation failures come back as { error: "Invalid input", details }; include
+// the field-level messages so the user knows what to fix.
 function getRequestErrorMessage(error: unknown, fallback: string) {
-  if (axios.isAxiosError<{ message?: string; error?: string; reason?: string }>(error)) {
-    return error.response?.data?.reason || error.response?.data?.message || error.response?.data?.error || fallback;
+  if (axios.isAxiosError<ApiErrorBody>(error)) {
+    const data = error.response?.data;
+    const base = data?.reason || data?.message || data?.error || fallback;
+    const problems = [
+      ...(data?.details?.formErrors ?? []),
+      ...Object.values(data?.details?.fieldErrors ?? {}).flat(),
+    ];
+    return problems.length ? `${base}: ${problems.join("; ")}` : base;
   }
   return error instanceof Error ? error.message : fallback;
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default function BusinessPage() {
-  const user = useAuthStore((state) => state.user);
+  const router = useRouter();
   const [tab, setTab] = useState<BusinessTab>("ads");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -117,6 +134,15 @@ export default function BusinessPage() {
   const [eventImages, setEventImages] = useState<string[]>([]);
   const [uploadingEventImage, setUploadingEventImage] = useState(false);
   const [submittingTicket, setSubmittingTicket] = useState(false);
+
+  // POST /ads, /ads/upload and /events all require a signed-in business user.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const token = localStorage.getItem("mingle_token") || localStorage.getItem("mingle_access_token");
+    if (!token) {
+      router.replace("/login");
+    }
+  }, [router]);
 
   // Load existing ads and events
   const loadData = async () => {
@@ -179,6 +205,20 @@ export default function BusinessPage() {
     };
   }, [adType, scheduledDate]);
 
+  // Retries on dropped connections (e.g. the free-tier backend waking from sleep)
+  // but not on real server responses like validation or auth errors.
+  const uploadImageWithRetry = async (formData: FormData, retries = 2, delayMs = 4000) => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await API.post("/ads/upload", formData);
+      } catch (err) {
+        const isNetworkError = axios.isAxiosError(err) && !err.response;
+        if (!isNetworkError || attempt >= retries) throw err;
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+  };
+
   // Handle ad media upload (strict max 2 images, high-quality downscale)
   const handleAdImageUpload = async (file?: File) => {
     if (!file) return;
@@ -195,7 +235,7 @@ export default function BusinessPage() {
       const optimized = await optimizeImage(file, 1600, 0.92);
       const formData = new FormData();
       formData.append("file", optimized);
-      const response = await API.post("/ads/upload", formData);
+      const response = await uploadImageWithRetry(formData);
       const url = response.data?.data?.image_url;
       if (!url) throw new Error("Image upload did not return a valid URL.");
 
@@ -224,7 +264,7 @@ export default function BusinessPage() {
       const optimized = await optimizeImage(file, 1600, 0.92);
       const formData = new FormData();
       formData.append("file", optimized);
-      const response = await API.post("/ads/upload", formData);
+      const response = await uploadImageWithRetry(formData);
       const url = response.data?.data?.image_url;
       if (!url) throw new Error("Image upload did not return a valid URL.");
 
@@ -259,26 +299,44 @@ export default function BusinessPage() {
       return;
     }
 
+    if (adType === "ticket_boost" && !boostEventId) {
+      setError("Select an event to boost.");
+      return;
+    }
+
     try {
       const startTime = `${scheduledDate}T00:00:00Z`;
       // End time minimum 24 hours
       const nextDate = new Date(new Date(scheduledDate).getTime() + 24 * 60 * 60 * 1000);
       const endTime = nextDate.toISOString();
 
+      // The "Link to Popup" field accepts a popup UUID or an internal route; the
+      // API only takes a UUID in popup_id, so a route becomes the target_url.
+      const popupLink = popupId.trim();
+      const linkedPopupId = UUID_PATTERN.test(popupLink) ? popupLink : null;
+      const linkedRoute = popupLink && !linkedPopupId ? popupLink : "";
+
       const payload = {
         ad_type: adType,
         title: title.trim() || (adType === "notification" ? "Notification Promotion" : "Banner Spotlight"),
         text_content: textContent.trim(),
         image_url: uploadedImages[0] || null,
-        target_url: targetUrl.trim() || (boostEventId ? `/events/${boostEventId}` : "/date"),
-        popup_id: popupId.trim() || null,
+        target_url: targetUrl.trim() || linkedRoute || (boostEventId ? `/events/${boostEventId}` : "/date"),
+        popup_id: linkedPopupId,
         event_id: boostEventId || null,
         scheduled_date: scheduledDate,
         start_time: startTime,
         end_time: endTime,
         start_date: startTime,
         end_date: endTime,
-        placement: adType === "popup" ? "popup" : "home-banner",
+        placement:
+          adType === "popup"
+            ? "popup"
+            : adType === "notification"
+              ? "notification"
+              : adType === "ticket_boost"
+                ? "ticket-boost"
+                : "home-banner",
       };
 
       const res = await API.post("/ads", payload);
@@ -359,7 +417,7 @@ export default function BusinessPage() {
 
       <div className="min-h-screen bg-[#000B1A] text-white selection:bg-[#FFB6C1] selection:text-[#000B1A]">
         {/* Header Bar */}
-        <header className="border-b border-white/10 bg-[#0a0f1a]/90 backdrop-blur-md sticky top-0 z-40">
+        <header className="border-b border-white/10 bg-[#0a0f1a]/90 backdrop-blur-md sticky top-0 md:top-16 z-30 md:mt-16">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
             <div className="flex items-center gap-3">
               <Link
@@ -389,7 +447,7 @@ export default function BusinessPage() {
           </div>
         </header>
 
-        <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 space-y-8">
+        <main className="mx-auto max-w-6xl px-4 pt-8 pb-28 sm:px-6 md:pb-12 space-y-8">
           {/* Navigation Tabs */}
           <nav className="flex gap-2 border-b border-white/10 pb-3 overflow-x-auto">
             {tabs.map((t) => (
@@ -429,7 +487,42 @@ export default function BusinessPage() {
 
           {/* TAB 1: AD MANAGER */}
           {tab === "ads" && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="space-y-6">
+              {/* Live Ads & Status */}
+              <div className="rounded-2xl border border-white/10 bg-[#0c1322] p-5 space-y-3">
+                <h3 className="font-serif text-lg text-white">Live Ads & Status</h3>
+                {loading ? (
+                  <div className="py-6 flex justify-center text-white/40">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  </div>
+                ) : ads.length === 0 ? (
+                  <p className="text-xs text-white/40 py-4 text-center">No active ads on this date.</p>
+                ) : (
+                  <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+                    {ads.map((ad) => (
+                      <div key={ad.id} className="rounded-xl border border-white/5 bg-[#0a0f1a] p-3 text-xs flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <span className="font-semibold text-white block truncate">{ad.title}</span>
+                          <span className="text-[10px] text-white/40 block">
+                            {ad.ad_type} · {ad.scheduled_date || "Active"}
+                          </span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium shrink-0 ${
+                          ad.status === "approved"
+                            ? "bg-emerald-500/10 text-emerald-300"
+                            : ad.status === "rejected"
+                              ? "bg-red-500/10 text-red-300"
+                              : "bg-amber-500/10 text-amber-300"
+                        }`}>
+                          {ad.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               {/* Ad Creation Form */}
               <div className="lg:col-span-7 space-y-5">
                 <div className="rounded-2xl border border-white/10 bg-[#0c1322] p-6 space-y-5">
@@ -543,7 +636,12 @@ export default function BusinessPage() {
                         {uploadedImages.length > 0 && (
                           <div className="grid grid-cols-2 gap-2">
                             {uploadedImages.map((img, i) => (
-                              <div key={i} className="relative aspect-video rounded-lg overflow-hidden bg-white/5 border border-white/10">
+                              <div
+                                key={i}
+                                className={`relative rounded-lg overflow-hidden bg-white/5 border border-white/10 ${
+                                  adType === "banner" ? "aspect-[2.5/1]" : "aspect-video"
+                                }`}
+                              >
                                 <img src={img} alt="Uploaded" className="w-full h-full object-cover" />
                                 <button
                                   type="button"
@@ -555,6 +653,12 @@ export default function BusinessPage() {
                               </div>
                             ))}
                           </div>
+                        )}
+
+                        {adType === "banner" && (
+                          <p className="text-[11px] text-white/40">
+                            Banner ads are shown at the same wide size as the home page banners — use a landscape image (about 2.5:1) for the best fit.
+                          </p>
                         )}
 
                         {uploadedImages.length < 2 && (
@@ -599,6 +703,31 @@ export default function BusinessPage() {
                       </div>
                     )}
 
+                    {/* Ticket boost-specific: which event gets pinned to the top */}
+                    {adType === "ticket_boost" && (
+                      <div>
+                        <label className="block text-xs text-white/70 mb-1 font-medium">
+                          Event to Boost
+                        </label>
+                        <select
+                          required
+                          value={boostEventId}
+                          onChange={(e) => setBoostEventId(e.target.value)}
+                          className="w-full rounded-xl border border-white/10 bg-[#0a0f1a] p-3 text-sm text-white focus:outline-none focus:border-[#FFB6C1]"
+                        >
+                          <option value="">Select an event...</option>
+                          {events.map((ev) => (
+                            <option key={ev.id} value={ev.id}>
+                              {ev.event_name}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-[11px] text-white/40 mt-1">
+                          This event is pinned to the top of the campus events list with a &ldquo;Promoted&rdquo; badge for the ad&rsquo;s duration.
+                        </p>
+                      </div>
+                    )}
+
                     {/* Destination Link */}
                     {adType !== "notification" && (
                       <div>
@@ -632,6 +761,53 @@ export default function BusinessPage() {
                 {/* Live Preview Card */}
                 <div className="rounded-2xl border border-white/10 bg-[#0c1322] p-5 space-y-4">
                   <h3 className="font-serif text-lg text-white">Creative Preview</h3>
+                  {adType === "banner" ? (
+                    <div className="rounded-xl border border-white/10 bg-[#0a0f1a] overflow-hidden p-3 space-y-2">
+                      <p className="text-[11px] text-white/40">
+                        Exact size shown on the home page banner carousel:
+                      </p>
+                      <div className="relative flex min-h-36 items-end overflow-hidden rounded-2xl border border-white/10 bg-[#0c1322] p-4 sm:min-h-40 sm:p-5">
+                        {uploadedImages[0] ? (
+                          <img
+                            src={uploadedImages[0]}
+                            alt="Ad preview"
+                            className="absolute inset-0 h-full w-full object-cover"
+                          />
+                        ) : null}
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#070b14] via-[#070b14]/75 to-[#070b14]/10" />
+                        <div className="relative z-10 min-w-0">
+                          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/70">
+                            Promotion
+                          </span>
+                          <h2 className="font-serif text-xl text-white">{title || "Ad Headline"}</h2>
+                          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-white/65">
+                            {textContent || "Text description will appear here..."}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-white/40 block pt-1">
+                        Shown for 24h on {scheduledDate}
+                      </span>
+                    </div>
+                  ) : adType === "notification" ? (
+                    // Notification ads never carry an image (upload UI is
+                    // hidden for this type above), so the preview skips the
+                    // media box entirely instead of showing an empty one.
+                    <div className="rounded-xl border border-white/10 bg-[#0a0f1a] overflow-hidden">
+                      <div className="p-4 space-y-1">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-[#FFB6C1]">
+                          Notification
+                        </span>
+                        <h4 className="font-serif text-base text-white">{title || "Ad Headline"}</h4>
+                        <p className="text-xs text-white/60 line-clamp-2">
+                          {textContent || "Text description will appear here..."}
+                        </p>
+                        <span className="text-[10px] text-white/40 block pt-1">
+                          Shown for 24h on {scheduledDate}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
                   <div className="rounded-xl border border-white/10 bg-[#0a0f1a] overflow-hidden">
                     <div className="relative aspect-video bg-white/5 flex items-center justify-center">
                       {uploadedImages[0] ? (
@@ -653,42 +829,10 @@ export default function BusinessPage() {
                       </span>
                     </div>
                   </div>
-                </div>
-
-                {/* Active Promotions Feed */}
-                <div className="rounded-2xl border border-white/10 bg-[#0c1322] p-5 space-y-3">
-                  <h3 className="font-serif text-lg text-white">Live Ads & Status</h3>
-                  {loading ? (
-                    <div className="py-6 flex justify-center text-white/40">
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    </div>
-                  ) : ads.length === 0 ? (
-                    <p className="text-xs text-white/40 py-4 text-center">No active ads on this date.</p>
-                  ) : (
-                    <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
-                      {ads.map((ad) => (
-                        <div key={ad.id} className="rounded-xl border border-white/5 bg-[#0a0f1a] p-3 text-xs flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <span className="font-semibold text-white block truncate">{ad.title}</span>
-                            <span className="text-[10px] text-white/40 block">
-                              {ad.ad_type} · {ad.scheduled_date || "Active"}
-                            </span>
-                          </div>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium shrink-0 ${
-                            ad.status === "approved"
-                              ? "bg-emerald-500/10 text-emerald-300"
-                              : ad.status === "rejected"
-                                ? "bg-red-500/10 text-red-300"
-                                : "bg-amber-500/10 text-amber-300"
-                          }`}>
-                            {ad.status}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
                   )}
                 </div>
               </div>
+            </div>
             </div>
           )}
 

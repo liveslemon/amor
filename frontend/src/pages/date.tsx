@@ -9,13 +9,14 @@ import {
   Calendar,
   MessageCircle,
   Clock3,
-  MapPin,
   CheckCircle2,
   Bell,
   ArrowRight,
   ShieldCheck,
   Flame,
   UserCheck,
+  Settings,
+  History,
 } from "lucide-react";
 import API from "@/api/client";
 import { fetchCurrentMatch as fetchCurrentMatchData } from "@/api/matches";
@@ -23,11 +24,12 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { APP_CONFIG } from "@/config/app";
 import PromoBanners from "@/components/ui/PromoBanners";
 import NotificationCenter from "@/components/pwa/NotificationCenter";
+import { triggerHaptic } from "@/lib/haptics";
 
 interface PartnerProfile {
   id: string;
   name: string;
-  whatsapp_number: string;
+  whatsapp_number: string | null;
   profile: {
     age?: number;
     height?: number;
@@ -53,18 +55,21 @@ interface MatchData {
   match_score: number;
   match_week: string;
   status: string;
+  blocked: boolean;
   partner: PartnerProfile;
 }
 
 export default function MyDatePage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const logout = useAuthStore((state) => state.logout);
 
   const [matchData, setMatchData] = useState<MatchData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [safetyStatus, setSafetyStatus] = useState("");
+  const [momentFeedback, setMomentFeedback] = useState<string | null>(null);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [feedbackError, setFeedbackError] = useState("");
   const [timeLeft, setTimeLeft] = useState({ days: "00", hours: "00", minutes: "00", seconds: "00" });
 
   useEffect(() => {
@@ -89,11 +94,26 @@ export default function MyDatePage() {
     fetchCurrentMatch();
   }, [router, user?.id]);
 
+  const handleMomentVote = async (rating: string) => {
+    if (!matchData) return;
+    triggerHaptic("success");
+    setFeedbackError("");
+    try {
+      await API.post(`/matches/${encodeURIComponent(matchData.match_id)}/feedback`, { rating });
+      setMomentFeedback(rating);
+      setFeedbackSubmitted(true);
+      setTimeout(() => setFeedbackSubmitted(false), 4000);
+    } catch (error) {
+      console.error("Could not submit match feedback:", error);
+      setFeedbackError("Could not save your feedback. Please try again.");
+    }
+  };
+
   // Countdown to next Friday at 8:00 AM WAT
   useEffect(() => {
     const calculateCountdown = () => {
       const now = new Date();
-      const nextFriday = new Date();
+      const nextFriday = new Date(now);
       const currentDay = now.getDay();
       const daysUntilFriday = (5 - currentDay + 7) % 7;
 
@@ -119,6 +139,7 @@ export default function MyDatePage() {
     };
 
     calculateCountdown();
+
     const timer = setInterval(calculateCountdown, 1000);
     return () => clearInterval(timer);
   }, []);
@@ -130,12 +151,13 @@ export default function MyDatePage() {
   const whatsappUrl = `https://wa.me/${cleanWhatsapp}?text=${encodeURIComponent(
     `Hey ${partner?.name || "there"}! We were paired on Minglee for our Friday date. Excited to meet you! 😊`
   )}`;
+  const isBlocked = matchData?.blocked ?? false;
 
   const submitSafetyAction = async (action: "block" | "report") => {
     if (!partner?.id) return;
     const confirmed = window.confirm(
       action === "block"
-        ? `Block ${partner.name}? You will not be paired with this member again.`
+        ? `Block ${partner.name}? This won't end your current chat, but it's recorded so you won't be matched together again.`
         : `Report ${partner.name}'s profile or photos for review?`,
     );
     if (!confirmed) return;
@@ -144,6 +166,15 @@ export default function MyDatePage() {
     try {
       if (action === "block") {
         await API.post(`/users/${encodeURIComponent(partner.id)}/block`);
+        setMatchData((prev) =>
+          prev
+            ? {
+                ...prev,
+                blocked: true,
+                partner: { ...prev.partner, whatsapp_number: null, photos: [] },
+              }
+            : prev,
+        );
       } else {
         await API.post("/reports", {
           reported_user_id: partner.id,
@@ -156,11 +187,15 @@ export default function MyDatePage() {
           : "Your report was sent to the safety team.",
       );
     } catch (error) {
-      console.error(`Could not ${action} this member:`, error);
+      const responseData = (error as { response?: { data?: unknown } })?.response?.data as
+        | { error?: string; details?: unknown }
+        | undefined;
+      console.error(`Could not ${action} this member:`, responseData ?? error);
       setSafetyStatus(
-        action === "block"
-          ? "Blocking is unavailable until the safety service is connected."
-          : "Reporting is unavailable until the safety service is connected.",
+        responseData?.error ||
+          (action === "block"
+            ? "Blocking is unavailable until the safety service is connected."
+            : "Reporting is unavailable until the safety service is connected."),
       );
     }
   };
@@ -173,56 +208,58 @@ export default function MyDatePage() {
 
       <div className="min-h-screen bg-[#0a0f1a] text-white flex flex-col selection:bg-pink-500/30">
 
-        {/* In-App Header */}
-        <header className="sticky top-0 z-40 border-b border-white/5 bg-[#000B1A]">
-          <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
-            <Link href="/home" className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-white">
-                <Heart className="h-4 w-4 text-[#FFB6C1]" />
-              </div>
-              <span className="text-lg font-semibold tracking-[0.14em] font-serif">
-                {APP_CONFIG.name.toUpperCase()}
+        {/* Mobile-only Top App Header (Desktop uses PWANavigation top navbar) */}
+        <header className="md:hidden sticky top-0 z-30 bg-[#000B1A] border-b border-white/5 px-4 py-3">
+          <div className="max-w-md mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <img src="/logo-mark.png" alt="" className="h-7 w-7" />
+              <span className="font-[family-name:var(--font-marker)] text-2xl tracking-wide text-white">
+                {APP_CONFIG.name}
               </span>
-            </Link>
-
-            <nav className="flex items-center gap-2 text-sm text-slate-200">
-              <Link
-                href="/dates"
-                className="rounded-full px-3.5 py-1.5 bg-white/10 text-white font-medium flex items-center gap-1.5"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-[#FFB6C1]" />
-                <span>My Date</span>
-              </Link>
-              <Link
-                href="/events"
-                className="rounded-full px-3.5 py-1.5 hover:bg-white/5 transition-colors"
-              >
-                Events
-              </Link>
+            </div>
+            <div className="flex items-center gap-1">
               <NotificationCenter />
-              <button
-                type="button"
-                onClick={() => {
-                  logout();
-                  window.location.href = "/login";
-                }}
-                className="text-xs text-white/50 hover:text-white px-2 py-1 transition-colors cursor-pointer"
+              <Link
+                href="/me"
+                aria-label="Settings"
+                className="flex items-center justify-center w-9 h-9 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors"
               >
-                Log Out
-              </button>
-            </nav>
+                <Settings className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
         </header>
 
-        <main className="flex-1 mx-auto max-w-5xl w-full px-4 py-6 sm:px-6 space-y-6">
+        <main className="flex-1 mx-auto max-w-5xl w-full px-4 pt-6 md:pt-24 pb-28 md:pb-10 sm:px-6 space-y-6">
           {/* Dual Promotional Banners */}
           <PromoBanners />
 
           {/* Main Date Section */}
           {loading ? (
-            <div className="py-24 text-center">
-              <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-white/40 border-t-transparent mb-3" />
-              <p className="text-sm text-white/50">Retrieving your Friday date...</p>
+            /* SKELETON — avoid flashing the active/waiting card while the match loads */
+            <div className="space-y-6 animate-pulse">
+              <div className="flex items-center justify-between gap-2 border-b border-white/5 pb-4">
+                <div className="space-y-2">
+                  <div className="h-3 w-32 rounded-full bg-white/[0.06]" />
+                  <div className="h-8 w-56 rounded-full bg-white/[0.06]" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div className="lg:col-span-5">
+                  <div className="aspect-[3/4] w-full rounded-2xl md:rounded-3xl bg-white/[0.04]" />
+                </div>
+                <div className="lg:col-span-7">
+                  <div className="rounded-2xl bg-[#0c1220] p-6 space-y-4">
+                    <div className="h-4 w-1/3 rounded-full bg-white/[0.06]" />
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="h-14 rounded-xl bg-white/[0.04]" />
+                      ))}
+                    </div>
+                    <div className="h-12 w-full rounded-full bg-white/[0.06]" />
+                  </div>
+                </div>
+              </div>
             </div>
           ) : matchData && partner ? (
             /* ACTIVE DATE VIEW */
@@ -247,12 +284,6 @@ export default function MyDatePage() {
                     </span>
                   </h1>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="rounded-full bg-black/80 px-3.5 py-1 text-xs font-semibold text-white">
-                    {matchData.match_score}% Compatibility
-                  </div>
-                </div>
               </div>
 
               {/* Match Card Layout */}
@@ -273,10 +304,6 @@ export default function MyDatePage() {
                     )}
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-5">
                       <h2 className="text-2xl font-serif text-white">{partner.name}, {partner.profile?.age || 21}</h2>
-                      <p className="text-xs text-white/70 flex items-center gap-1.5 mt-0.5">
-                        <MapPin className="w-3.5 h-3.5 text-[#FFB6C1]" />
-                        <span>Pan-Atlantic University Campus</span>
-                      </p>
                     </div>
                   </div>
 
@@ -374,20 +401,39 @@ export default function MyDatePage() {
                       </p>
                     </div>
 
-                    {/* WhatsApp Action Button */}
-                    <div className="pt-2">
-                      <a
-                        href={whatsappUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="h-12 w-full cursor-pointer rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-sans font-semibold text-sm transition-colors active:scale-[0.98] flex items-center justify-center gap-2.5"
-                      >
-                        <MessageCircle className="w-5 h-5 fill-current" />
-                        <span>Say Hello on WhatsApp</span>
-                      </a>
-                      <p className="text-[11px] text-center text-white/40 mt-2">
-                        Matches persist throughout the week so you can plan your date at your own pace.
-                      </p>
+                    {/* Chat Action Buttons */}
+                    {isBlocked ? (
+                      <div className="pt-2 rounded-xl bg-white/[0.04] p-4 text-center">
+                        <p className="text-sm text-white/60">
+                          You've blocked this member. You can no longer message each other.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="pt-2 flex gap-2.5">
+                        <Link
+                          href="/chats"
+                          className="h-12 flex-1 cursor-pointer rounded-full bg-[#FFB6C1] hover:bg-[#ffc4cd] text-[#1a0a10] font-sans font-semibold text-sm transition-colors active:scale-[0.98] flex items-center justify-center gap-2.5"
+                        >
+                          <MessageCircle className="w-5 h-5" />
+                          <span>Message in Minglee</span>
+                        </Link>
+                        <a
+                          href={whatsappUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label="Say hello on WhatsApp"
+                          className="h-12 w-12 shrink-0 cursor-pointer rounded-full bg-emerald-600 hover:bg-emerald-500 text-white transition-colors active:scale-[0.98] flex items-center justify-center"
+                        >
+                          <MessageCircle className="w-5 h-5 fill-current" />
+                        </a>
+                      </div>
+                    )}
+                    <div className="pt-0">
+                      {!isBlocked && (
+                        <p className="text-[11px] text-center text-white/40 mt-2">
+                          Matches persist throughout the week so you can plan your date at your own pace.
+                        </p>
+                      )}
                       <div className="grid grid-cols-2 gap-2 pt-2">
                         <button
                           type="button"
@@ -399,9 +445,10 @@ export default function MyDatePage() {
                         <button
                           type="button"
                           onClick={() => submitSafetyAction("block")}
-                          className="rounded-full bg-red-500/10 px-3 py-2 text-xs text-red-200 hover:bg-red-500/20"
+                          disabled={isBlocked}
+                          className="rounded-full bg-red-500/10 px-3 py-2 text-xs text-red-200 hover:bg-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Block member
+                          {isBlocked ? "Blocked" : "Block member"}
                         </button>
                       </div>
                       {safetyStatus && (
@@ -484,6 +531,86 @@ export default function MyDatePage() {
               </div>
             </motion.div>
           )}
+
+          {/* MINGLEE MOMENTS - Post-Date Feedback */}
+          {!loading && matchData && (
+            <div className="rounded-2xl bg-[#0c1322] p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-white/60 flex items-center gap-1.5">
+                  <span className="font-[family-name:var(--font-marker)] text-sm tracking-normal capitalize text-[#FFB6C1] font-normal">Minglee</span>
+                  <span>Moments</span>
+                </span>
+                <span className="text-[10px] text-white/40">Feedback Loop</span>
+              </div>
+              <p className="text-xs text-white/70">
+                How did your date with {matchData.partner.name} go? Your feedback refines future pairings.
+              </p>
+
+              {feedbackSubmitted ? (
+                <div className="p-3 rounded-xl bg-emerald-500/10 text-xs text-emerald-300 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Thank you! Feedback recorded for your next Friday drop.</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300">Good</p>
+                    {[
+                      { key: "loved", label: "❤️ Loved it" },
+                      { key: "nice", label: "🙂 It was nice" },
+                    ].map((btn) => (
+                      <button
+                        key={btn.key}
+                        type="button"
+                        onClick={() => handleMomentVote(btn.key)}
+                        className={`w-full rounded-xl px-3 py-2 text-left text-xs font-medium transition-colors cursor-pointer ${
+                          momentFeedback === btn.key
+                            ? "bg-emerald-500/20 text-white"
+                            : "bg-white/[0.04] text-white/80 hover:bg-white/[0.08]"
+                        }`}
+                      >
+                        {btn.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-rose-300">Could be better</p>
+                    {[
+                      { key: "neutral", label: "😐 Didn't click" },
+                      { key: "uncomfortable", label: "👎 Uncomfortable" },
+                    ].map((btn) => (
+                      <button
+                        key={btn.key}
+                        type="button"
+                        onClick={() => handleMomentVote(btn.key)}
+                        className={`w-full rounded-xl px-3 py-2 text-left text-xs font-medium transition-colors cursor-pointer ${
+                          momentFeedback === btn.key
+                            ? "bg-rose-500/20 text-white"
+                            : "bg-white/[0.04] text-white/80 hover:bg-white/[0.08]"
+                        }`}
+                      >
+                        {btn.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {feedbackError && (
+                <p role="alert" className="text-xs text-amber-200">{feedbackError}</p>
+              )}
+            </div>
+          )}
+
+          {/* PAST DATES ARCHIVE */}
+          <div className="rounded-2xl border border-white/10 bg-[#0c1322] p-8 text-center">
+            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5">
+              <History className="h-4 w-4 text-white/40" />
+            </div>
+            <p className="font-serif text-lg text-white">Past dates</p>
+            <p className="mt-1.5 text-xs text-white/40">
+              Your match history will appear here once you've had a few Friday dates.
+            </p>
+          </div>
         </main>
       </div>
     </>

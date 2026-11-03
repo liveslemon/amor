@@ -2,6 +2,9 @@ import API from "./client";
 
 const MATCH_CACHE_PREFIX = "minglee_current_match:";
 const MATCH_NOTIFICATION_KEY = "minglee_notified_match:";
+// Partner photo URLs are signed and expire after 1 hour; don't serve a cached
+// match past that, or its photos would show broken.
+const MATCH_CACHE_TTL_MS = 55 * 60 * 1000;
 
 function cacheKey(userId?: string) {
   return `${MATCH_CACHE_PREFIX}${userId || "current"}`;
@@ -12,7 +15,14 @@ export function readCachedMatch<T>(userId?: string): T | null {
 
   try {
     const value = localStorage.getItem(cacheKey(userId));
-    return value ? (JSON.parse(value) as T) : null;
+    if (!value) return null;
+
+    const parsed = JSON.parse(value) as { savedAt?: number; match?: T };
+    if (!parsed.savedAt || !parsed.match || Date.now() - parsed.savedAt > MATCH_CACHE_TTL_MS) {
+      localStorage.removeItem(cacheKey(userId));
+      return null;
+    }
+    return parsed.match;
   } catch (error) {
     console.error("Could not restore the saved Minglee date:", error);
     localStorage.removeItem(cacheKey(userId));
@@ -31,7 +41,7 @@ export async function fetchCurrentMatch<T extends { match_id?: string }>(
 
     if (typeof window !== "undefined") {
       if (match) {
-        localStorage.setItem(cacheKey(userId), JSON.stringify(match));
+        localStorage.setItem(cacheKey(userId), JSON.stringify({ savedAt: Date.now(), match }));
         const notifiedMatch = localStorage.getItem(MATCH_NOTIFICATION_KEY);
         if (
           match.match_id &&

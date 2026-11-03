@@ -1,12 +1,27 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import React, { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Smartphone, X } from "lucide-react";
+import { useIsMobile } from "@/lib/useIsMobile";
+import {
+  getPwaDeviceType,
+  getPwaInstallInstructions,
+  type PwaDeviceType,
+} from "@/lib/pwa";
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+}
 
 const Hero = () => {
+  const isMobile = useIsMobile();
+  const deferredInstallPrompt = useRef<BeforeInstallPromptEvent | null>(null);
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [deviceType, setDeviceType] = useState<PwaDeviceType>("desktop");
   const [timeLeft, setTimeLeft] = useState({
     days: "05",
     hours: "08",
@@ -14,11 +29,25 @@ const Hero = () => {
     seconds: "41",
   });
 
+  // Capture the native install prompt so the mobile "Download" button can
+  // trigger it directly instead of just linking to /signup.
+  useEffect(() => {
+    setDeviceType(getPwaDeviceType());
+
+    const onBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      deferredInstallPrompt.current = event as BeforeInstallPromptEvent;
+    };
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    return () =>
+      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+  }, []);
+
   // Calculate dynamic countdown to the next upcoming Friday at 8:00 PM
   useEffect(() => {
     const calculateTimeLeft = () => {
       const now = new Date();
-      const nextFriday = new Date();
+      const nextFriday = new Date(now);
 
       // Set to next Friday
       const currentDay = now.getDay();
@@ -48,6 +77,7 @@ const Hero = () => {
     };
 
     calculateTimeLeft();
+
     const interval = setInterval(calculateTimeLeft, 1000);
     return () => clearInterval(interval);
   }, []);
@@ -108,14 +138,87 @@ const Hero = () => {
           transition={{ duration: 0.8, delay: 0.4 }}
           className="flex flex-col items-center gap-6 w-full max-w-sm"
         >
-          <Link href="/signup" className="w-full">
+          <Link
+            href="/signup"
+            className="w-full"
+            onClick={(e) => {
+              // Mobile users should never land on the signup/login page from
+              // this button — they get the native install prompt, or
+              // instructions for adding the PWA to their home screen.
+              if (!isMobile) return;
+              e.preventDefault();
+
+              const prompt = deferredInstallPrompt.current;
+              if (prompt) {
+                deferredInstallPrompt.current = null;
+                prompt.prompt();
+              } else {
+                setShowInstallGuide(true);
+              }
+            }}
+          >
             <button className="w-full h-14 rounded-xl bg-white hover:bg-white/90 text-[#0a0f1a] transition-colors flex items-center justify-center gap-3 cursor-pointer border-none px-8">
-              <span className="font-sans font-bold text-lg">Get Started</span>
+              <span className="font-sans font-bold text-lg">
+                {isMobile ? "Download" : "Get Started"}
+              </span>
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
           </Link>
         </motion.div>
       </div>
+
+      <AnimatePresence>
+        {showInstallGuide && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowInstallGuide(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-sm rounded-[32px] border border-white/10 bg-[#0c1220] p-7 shadow-2xl"
+            >
+              <button
+                type="button"
+                onClick={() => setShowInstallGuide(false)}
+                aria-label="Close install instructions"
+                className="absolute top-4 right-4 p-1.5 text-white/40 hover:text-white transition-colors cursor-pointer rounded-full hover:bg-white/5"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5">
+                  <Smartphone className="h-5 w-5 text-[#ff69b4]" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-sans font-medium uppercase tracking-[0.2em] text-white/50">
+                    Install Guide
+                  </p>
+                  <h3 className="font-serif text-xl text-white">
+                    {getPwaInstallInstructions(deviceType).label}
+                  </h3>
+                </div>
+              </div>
+
+              <p className="font-sans text-sm text-white/60 leading-relaxed mb-3">
+                {getPwaInstallInstructions(deviceType).description}
+              </p>
+
+              <ol className="list-decimal space-y-1 pl-5 font-sans text-sm text-white/70">
+                {getPwaInstallInstructions(deviceType).steps.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </section>
   );
 };

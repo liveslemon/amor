@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -15,6 +15,7 @@ import {
 import { APP_CONFIG } from "@/config/app";
 import { useAuthStore } from "@/store/useAuthStore";
 import NotificationCenter from "@/components/pwa/NotificationCenter";
+import { fetchUpcomingEvents } from "@/api/events";
 
 interface NavItem {
   name: string;
@@ -23,10 +24,10 @@ interface NavItem {
   badge?: number | string;
 }
 
-const NAV_ITEMS: NavItem[] = [
+const BASE_NAV_ITEMS: NavItem[] = [
   { name: "Home", href: "/home", icon: Home },
-  { name: "Dates", href: "/dates", icon: Heart },
-  { name: "Chats", href: "/chats", icon: MessageCircle, badge: "1" },
+  { name: "Dates", href: "/date", icon: Heart },
+  { name: "Chats", href: "/chats", icon: MessageCircle },
   { name: "Events", href: "/events", icon: CalendarDays },
   { name: "Me", href: "/me", icon: User },
 ];
@@ -34,16 +35,28 @@ const NAV_ITEMS: NavItem[] = [
 export default function PWANavigation() {
   const pathname = usePathname() || "";
   const user = useAuthStore((state) => state.user);
+  const [hasEvents, setHasEvents] = useState(false);
 
-  // Hide navigation on landing, login, signup, and legal reading pages
+  useEffect(() => {
+    fetchUpcomingEvents()
+      .then((events) => setHasEvents(events.length > 0))
+      .catch(() => setHasEvents(false));
+  }, []);
+
+  const NAV_ITEMS = hasEvents
+    ? BASE_NAV_ITEMS
+    : BASE_NAV_ITEMS.filter((item) => item.name !== "Events");
+
+  // Hide navigation on landing, login, signup, and legal reading pages, and on
+  // the admin console, which has its own header (the fixed desktop bar covered it).
   const isAuthOrLanding =
     pathname === "/" ||
     pathname === "/Landing" ||
     pathname === "/login" ||
     pathname === "/signup" ||
-    pathname === "/registration-complete" ||
     pathname === "/terms" ||
-    pathname === "/privacy";
+    pathname === "/privacy" ||
+    pathname.startsWith("/admin");
 
   if (isAuthOrLanding) return null;
 
@@ -57,10 +70,10 @@ export default function PWANavigation() {
             href="/home"
             className="flex items-center gap-2 group cursor-pointer"
           >
+            <img src="/logo-mark.png" alt="" className="h-7 w-7" />
             <span className="font-[family-name:var(--font-marker)] text-2xl tracking-wide text-white group-hover:text-white/90 transition-colors">
               {APP_CONFIG.name}
             </span>
-            <span className="w-1.5 h-1.5 rounded-full bg-[#FFB6C1]" />
           </Link>
 
           {/* Desktop Nav Links */}
@@ -69,7 +82,6 @@ export default function PWANavigation() {
               const Icon = item.icon;
               const isActive =
                 pathname === item.href ||
-                (item.href === "/dates" && pathname === "/date") ||
                 (item.href !== "/home" && pathname.startsWith(item.href));
 
               return (
@@ -127,7 +139,6 @@ export default function PWANavigation() {
               const Icon = item.icon;
               const isActive =
                 pathname === item.href ||
-                (item.href === "/dates" && pathname === "/date") ||
                 (item.href !== "/home" && pathname.startsWith(item.href));
 
               return (

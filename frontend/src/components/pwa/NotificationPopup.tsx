@@ -1,19 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import Link from "next/link";
-import { ArrowUpRight, Bell, X } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
 import API from "@/api/client";
 import { useAuthStore } from "@/store/useAuthStore";
+import { isDismissed, markDismissed } from "@/lib/adDismissal";
+import PopupOverlay, { PopupOverlayItem } from "./PopupOverlay";
 
-interface PopupItem {
-  id: string;
-  title: string;
-  message?: string;
-  body?: string;
-  action_url?: string;
-  url?: string;
-  image_url?: string;
+interface PopupItem extends PopupOverlayItem {
   type: "notification" | "ad";
 }
 
@@ -33,11 +26,10 @@ interface PopupAdData {
   image_url?: string;
 }
 
-const DISMISSED_KEY = "minglee-dismissed-popup:";
-
 export default function NotificationPopup() {
   const user = useAuthStore((state) => state.user);
   const [popup, setPopup] = useState<PopupItem | null>(null);
+  const trackedImpression = useRef<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -60,18 +52,17 @@ export default function NotificationPopup() {
           ? adResponse.data.data
           : [];
         const notification = (notifications as PopupNotificationData[]).find(
-          (item) => !localStorage.getItem(`${DISMISSED_KEY}${item.id}`),
+          (item) => !isDismissed(item.id),
         );
-        const ad = (ads as PopupAdData[]).find(
-          (item) => !localStorage.getItem(`${DISMISSED_KEY}${item.id}`),
-        );
+        const ad = (ads as PopupAdData[]).find((item) => !isDismissed(item.id));
         const candidate: PopupItem | undefined = notification
           ? {
               id: notification.id,
               title: notification.title || "Minglee update",
               message: notification.message,
-              action_url: notification.action_url,
+              href: notification.action_url,
               image_url: notification.metadata?.image_url,
+              label: "Minglee update",
               type: "notification",
             }
           : ad
@@ -79,8 +70,9 @@ export default function NotificationPopup() {
                 id: ad.id,
                 title: ad.title,
                 message: ad.subtitle,
-                action_url: ad.target_url,
+                href: ad.target_url,
                 image_url: ad.image_url,
+                label: "Promotion",
                 type: "ad",
               }
             : undefined;
@@ -97,10 +89,28 @@ export default function NotificationPopup() {
     };
   }, [user]);
 
-  const dismiss = async () => {
+  // Record an impression once per popup ad shown (real notifications aren't
+  // ad inventory, so they don't get impression/click tracking).
+  useEffect(() => {
+    if (!popup || popup.type !== "ad" || trackedImpression.current === popup.id) {
+      return;
+    }
+    trackedImpression.current = popup.id;
+    API.post(`/ads/${encodeURIComponent(popup.id)}/impression`).catch((error) => {
+      console.warn("Could not record popup ad impression:", error);
+    });
+  }, [popup]);
+
+  const dismiss = async (clicked: boolean) => {
     if (!popup) return;
-    localStorage.setItem(`${DISMISSED_KEY}${popup.id}`, "true");
-    if (popup.type !== "ad") {
+    markDismissed(popup.id);
+    if (popup.type === "ad") {
+      if (clicked) {
+        API.post(`/ads/${encodeURIComponent(popup.id)}/click`).catch((error) => {
+          console.warn("Could not record popup ad click:", error);
+        });
+      }
+    } else {
       try {
         await API.patch(`/notifications/${encodeURIComponent(popup.id)}/dismiss`);
       } catch (error) {
@@ -111,57 +121,12 @@ export default function NotificationPopup() {
   };
 
   if (!popup) return null;
-  const href = popup.action_url || popup.url;
-  const content = (
-    <div className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-[#0c1322] shadow-2xl">
-      {popup.image_url && (
-        <div className="h-44 overflow-hidden bg-white/5">
-          <img
-            src={popup.image_url}
-            alt=""
-            className="h-full w-full object-cover"
-          />
-        </div>
-      )}
-      <div className="p-5">
-        <div className="mb-2 flex items-center gap-2 text-[#FFB6C1]">
-          <Bell className="h-4 w-4" />
-          <span className="text-[10px] font-semibold uppercase tracking-wider">
-            {popup.type === "ad" ? "Promotion" : "Minglee update"}
-          </span>
-        </div>
-        <h2 className="font-serif text-xl text-white">{popup.title}</h2>
-        {(popup.message || popup.body) && (
-          <p className="mt-2 text-sm leading-relaxed text-white/65">
-            {popup.message || popup.body}
-          </p>
-        )}
-        {href && (
-          <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-white">
-            View details <ArrowUpRight className="h-3.5 w-3.5" />
-          </span>
-        )}
-      </div>
-    </div>
-  );
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-4">
-      <button
-        type="button"
-        onClick={dismiss}
-        aria-label="Dismiss popup"
-        className="absolute right-4 top-4 rounded-full bg-black/40 p-2 text-white/70 hover:text-white"
-      >
-        <X className="h-5 w-5" />
-      </button>
-      {href ? (
-        <Link href={href} onClick={dismiss} className="block">
-          {content}
-        </Link>
-      ) : (
-        content
-      )}
-    </div>
+    <PopupOverlay
+      popup={popup}
+      onDismiss={() => dismiss(false)}
+      onOpen={() => dismiss(true)}
+    />
   );
 }

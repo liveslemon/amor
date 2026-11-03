@@ -41,15 +41,24 @@ export default function StickySection({
     };
   }, []);
 
-  const baseClasses = stickyOnMobile 
-    ? "sticky" 
+  const baseClasses = stickyOnMobile
+    ? "sticky"
     : "relative md:sticky";
 
+  // Only let the computed offset take effect at the breakpoint where the
+  // section is actually `sticky` — on a `relative` box (non-stickyOnMobile
+  // sections on mobile) a `top` offset still shifts the box visually without
+  // the document flow accounting for it, leaving its original flow slot
+  // empty and exposing whatever sticky content sits behind it.
+  const topClasses = stickyOnMobile
+    ? "top-[var(--sticky-top)]"
+    : "top-0 md:top-[var(--sticky-top)]";
+
   return (
-    <section 
-      ref={sectionRef} 
-      className={`${baseClasses} ${className}`}
-      style={{ top: topStyle }}
+    <section
+      ref={sectionRef}
+      className={`${baseClasses} ${topClasses} ${className}`}
+      style={{ "--sticky-top": topStyle } as React.CSSProperties}
     >
       {children}
     </section>

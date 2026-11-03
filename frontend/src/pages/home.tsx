@@ -10,10 +10,7 @@ import {
   Sparkles,
   Calendar,
   MessageCircle,
-  Clock3,
-  ShieldCheck,
   ChevronRight,
-  Bell,
   Settings,
   Flame,
   ArrowRight,
@@ -22,10 +19,9 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { APP_CONFIG } from "@/config/app";
-import API from "@/api/client";
 import { fetchCurrentMatch } from "@/api/matches";
+import { fetchUpcomingEvents, DbEvent } from "@/api/events";
 import NotificationCenter from "@/components/pwa/NotificationCenter";
-import SupportChatModal from "@/components/pwa/SupportChatModal";
 import PromoBanners from "@/components/ui/PromoBanners";
 
 interface CurrentMatch {
@@ -53,7 +49,7 @@ export default function PWAHome() {
 
   const [match, setMatch] = useState<CurrentMatch | null>(null);
   const [loading, setLoading] = useState(true);
-  const [supportOpen, setSupportOpen] = useState(false);
+  const [nearbyEvent, setNearbyEvent] = useState<DbEvent | null>(null);
   const [countdown, setCountdown] = useState({
     days: "00",
     hours: "00",
@@ -87,6 +83,20 @@ export default function PWAHome() {
     fetchMatch();
   }, [router, user?.id]);
 
+  // Pull the nearest upcoming, approved event from the DB for the "Near You" card
+  useEffect(() => {
+    const fetchNearbyEvent = async () => {
+      try {
+        const upcoming = await fetchUpcomingEvents();
+        setNearbyEvent(upcoming[0] ?? null);
+      } catch {
+        setNearbyEvent(null);
+      }
+    };
+
+    fetchNearbyEvent();
+  }, []);
+
   // Weekly Friday 8:00 AM WAT Countdown calculation
   useEffect(() => {
     const updateCountdown = () => {
@@ -99,7 +109,7 @@ export default function PWAHome() {
       // Check if today is Friday (after 8 AM is active match time)
       const isFriActive = dayOfWeek === 5 && hour >= 8;
 
-      const target = new Date();
+      const target = new Date(now);
       let daysUntilFriday = (5 - dayOfWeek + 7) % 7;
       if (daysUntilFriday === 0 && now.getHours() >= 8) {
         daysUntilFriday = 7;
@@ -125,6 +135,7 @@ export default function PWAHome() {
     };
 
     updateCountdown();
+
     const timer = setInterval(updateCountdown, 1000);
     return () => clearInterval(timer);
   }, []);
@@ -137,20 +148,15 @@ export default function PWAHome() {
         <title>{APP_CONFIG.name} | Home</title>
       </Head>
 
-      <SupportChatModal
-        isOpen={supportOpen}
-        onClose={() => setSupportOpen(false)}
-      />
-
       <div className="min-h-screen bg-[#000B1A] text-[#F8F9FA] pb-28 md:pb-16">
         {/* Mobile-only Top App Header (Desktop uses PWANavigation top navbar) */}
         <header className="md:hidden sticky top-0 z-30 bg-[#000B1A] border-b border-white/5 px-4 py-3">
           <div className="max-w-md mx-auto flex items-center justify-between">
             <div className="flex items-center gap-2">
+              <img src="/logo-mark.png" alt="" className="h-7 w-7" />
               <span className="font-[family-name:var(--font-marker)] text-2xl tracking-wide text-white">
                 {APP_CONFIG.name}
               </span>
-              <span className="w-1.5 h-1.5 rounded-full bg-[#FFB6C1]" />
             </div>
             <div className="flex items-center gap-1">
               <NotificationCenter />
@@ -193,7 +199,7 @@ export default function PWAHome() {
             {/* ─── LEFT COLUMN: Date Spotlight & Weekly Rhythm (7 cols on lg) ─── */}
             <div className="lg:col-span-7 space-y-6">
               {/* Thursday Match Preparation Banner */}
-              {countdown.isThursday && !match && (
+              {!loading && countdown.isThursday && !match && (
                 <div className="rounded-2xl bg-[#0c1322] p-5 space-y-2.5">
                   <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#FFB6C1]">
                     <Sparkles className="w-4 h-4 text-[#FFB6C1]" />
@@ -237,7 +243,17 @@ export default function PWAHome() {
                   </span>
                 </div>
 
-                {match ? (
+                {loading ? (
+                  /* SKELETON — avoid flashing the wrong card while the match loads */
+                  <div className="rounded-2xl bg-[#0c1322] overflow-hidden animate-pulse">
+                    <div className="h-72 sm:h-80 w-full bg-white/[0.04]" />
+                    <div className="p-5 sm:p-6 space-y-3">
+                      <div className="h-6 w-2/3 rounded-full bg-white/[0.06]" />
+                      <div className="h-4 w-1/3 rounded-full bg-white/[0.04]" />
+                      <div className="h-11 w-full rounded-full bg-white/[0.06] mt-2" />
+                    </div>
+                  </div>
+                ) : match ? (
                   /* ACTIVE FRIDAY MATCH REVEALED CARD */
                   <div className="relative rounded-2xl bg-[#0c1322] overflow-hidden">
                     <div className="relative h-72 sm:h-80 w-full bg-[#141c2e]">
@@ -284,7 +300,7 @@ export default function PWAHome() {
                       </div>
 
                       <Link
-                        href="/dates"
+                        href="/date"
                         className="w-full flex items-center justify-center gap-2 rounded-full bg-white text-black py-3 sm:py-3.5 text-sm font-semibold hover:bg-white/90 transition-all active:scale-95"
                       >
                         <span>View My Date Dossier</span>
@@ -338,7 +354,7 @@ export default function PWAHome() {
                       </div>
 
                       <Link
-                        href="/dates"
+                        href="/date"
                         className="w-full max-w-sm flex items-center justify-center gap-2 rounded-full bg-white/10 hover:bg-white/15 text-white py-3 text-sm font-medium transition-colors active:scale-95 mt-1"
                       >
                         <span>View Match Schedule</span>
@@ -349,60 +365,6 @@ export default function PWAHome() {
                 )}
               </section>
 
-              {/* YOUR WEEK - Weekly Rhythm Timeline */}
-              <section className="rounded-2xl bg-[#0c1322] p-5 space-y-3.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-white/60 font-sans">
-                    Your Week
-                  </span>
-                  <span className="text-xs text-white/40 font-sans">
-                    Weekly Rhythm
-                  </span>
-                </div>
-
-                {/* Mon - Fri Track */}
-                <div className="grid grid-cols-5 gap-2 pt-1">
-                  {[
-                    { day: "MON", label: "Preferences" },
-                    { day: "TUE", label: "Discovery" },
-                    { day: "WED", label: "Events" },
-                    { day: "THU", label: "Prep" },
-                    { day: "FRI", label: "Match", isMatch: true },
-                  ].map((item) => (
-                    <div
-                      key={item.day}
-                      className={`flex flex-col items-center justify-center py-3 rounded-xl transition-colors ${
-                        item.isMatch
-                          ? "bg-white/10 text-[#FFB6C1]"
-                          : "bg-white/[0.03] text-white/70"
-                      }`}
-                    >
-                      <span className="text-xs sm:text-sm font-bold font-sans">
-                        {item.day}
-                      </span>
-                      <span className="text-[10px] text-white/40 mt-0.5 truncate px-1">
-                        {item.label}
-                      </span>
-                      {item.isMatch && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#FFB6C1] mt-1.5" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs text-white/60 font-sans">
-                  <div className="flex items-center gap-2">
-                    <Clock3 className="w-3.5 h-3.5 text-[#FFB6C1]" />
-                    <span>Matches arrive every Friday at 8:00 AM</span>
-                  </div>
-                  <Link
-                    href="/dates"
-                    className="text-[#FFB6C1] hover:underline font-medium"
-                  >
-                    Learn more
-                  </Link>
-                </div>
-              </section>
             </div>
 
             {/* ─── RIGHT COLUMN: Conversations & Events (5 cols on lg) ─── */}
@@ -423,7 +385,15 @@ export default function PWAHome() {
 
                 <div className="space-y-2.5">
                   {/* Current Date Row if exists */}
-                  {match ? (
+                  {loading ? (
+                    <div className="flex items-center gap-3.5 p-4 rounded-2xl bg-[#0c1322] animate-pulse">
+                      <div className="w-12 h-12 rounded-full bg-white/[0.06]" />
+                      <div className="flex-1 space-y-1.5">
+                        <div className="h-3.5 w-1/2 rounded-full bg-white/[0.06]" />
+                        <div className="h-3 w-3/4 rounded-full bg-white/[0.04]" />
+                      </div>
+                    </div>
+                  ) : match ? (
                     <Link
                       href="/chats"
                       className="flex items-center justify-between p-4 rounded-2xl bg-[#0c1322] hover:bg-[#111a2c] transition-colors group"
@@ -446,7 +416,7 @@ export default function PWAHome() {
                             <span className="text-sm sm:text-base font-medium text-white">
                               {match.partner.name}
                             </span>
-                            <span className="text-[10px] bg-white/10 text-[#FFB6C1] px-1.5 py-0.2 rounded-full font-medium">
+                            <span className="text-[10px] bg-white/10 text-[#FFB6C1] px-1.5 py-0.5 rounded-full font-medium">
                               Friday Match
                             </span>
                           </div>
@@ -457,99 +427,65 @@ export default function PWAHome() {
                       </div>
                       <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
                     </Link>
-                  ) : null}
-
-                  {/* Minglee Official Support Row */}
-                  <button
-                    type="button"
-                    onClick={() => setSupportOpen(true)}
-                    className="w-full flex items-center justify-between p-4 rounded-2xl bg-[#0c1322] hover:bg-[#111a2c] transition-colors group text-left cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3.5">
-                      <div className="relative flex items-center justify-center w-12 h-12 rounded-full bg-white/5 text-[#FFB6C1]">
-                        <ShieldCheck className="w-6 h-6" />
-                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-sm sm:text-base font-medium text-white flex items-center gap-1">
-                            <span className="font-[family-name:var(--font-marker)] text-base font-normal text-white">Minglee</span>
-                            <span>Support</span>
-                          </span>
-                          <span className="text-[10px] bg-white/10 text-white/70 px-1.5 py-0.2 rounded-full font-medium">
-                            Verified
-                          </span>
-                        </div>
-                        <p className="text-xs text-white/50 mt-0.5">
-                          Need help or safety assistance? Tap to chat
-                        </p>
-                      </div>
+                  ) : (
+                    <div className="rounded-2xl bg-[#0c1322] p-4 text-center text-xs text-white/40">
+                      Your next Friday match chat will appear right here.
                     </div>
-                    <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
-                  </button>
+                  )}
                 </div>
               </section>
 
               {/* NEAR YOU / CAMPUS EVENTS HIGHLIGHT */}
-              <section className="space-y-2.5">
-                <div className="flex items-center justify-between px-0.5">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-white/60 font-sans">
-                    Near You • Events
-                  </span>
-                  <Link
-                    href="/events"
-                    className="text-xs font-medium text-[#FFB6C1] hover:underline font-sans"
-                  >
-                    Explore all
-                  </Link>
-                </div>
-
-                <div className="rounded-2xl bg-[#0c1322] p-5 space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/10 text-[#FFB6C1]">
-                          Selling Fast
-                        </span>
-                        <span className="text-[10px] text-white/50">Pool Party</span>
-                      </div>
-                      <h3 className="font-serif text-xl text-white mt-1">
-                        WET WARS 2.0
-                      </h3>
-                      <p className="text-xs text-white/50 mt-0.5">
-                        Unilag Guest House, Akoka • 9:00 PM
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                    <div className="flex items-center gap-1.5 text-xs text-white/60">
-                      <Users className="w-3.5 h-3.5 text-[#FFB6C1]" />
-                      <span>142 Minglee users attending</span>
-                    </div>
+              {nearbyEvent && (
+                <section className="space-y-2.5">
+                  <div className="flex items-center justify-between px-0.5">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-white/60 font-sans">
+                      Near You • Events
+                    </span>
                     <Link
-                      href="/events/minglee-at-wet-wars"
-                      className="text-xs font-medium bg-white/10 hover:bg-white/15 text-white px-4 py-2 rounded-full transition-colors"
+                      href="/events"
+                      className="text-xs font-medium text-[#FFB6C1] hover:underline font-sans"
                     >
-                      View Event →
+                      Explore all
                     </Link>
                   </div>
-                </div>
-              </section>
 
-              {/* Members-Only Guarantee Card */}
-              <div className="rounded-2xl bg-white/[0.02] p-5 space-y-2 text-xs text-white/60">
-                <div className="flex items-center gap-2 text-white font-medium">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span className="flex items-center gap-1.5">
-                    <span className="font-[family-name:var(--font-marker)] text-sm font-normal text-white">Minglee</span>
-                    <span>Private Circle</span>
-                  </span>
-                </div>
-                <p className="leading-relaxed text-white/50">
-                  Every Minglee member is authenticated with active campus credentials. Matches drop every Friday at 8:00 AM WAT.
-                </p>
-              </div>
+                  <div className="rounded-2xl bg-[#0c1322] p-5 space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/10 text-[#FFB6C1]">
+                            {nearbyEvent.ticket_type}
+                          </span>
+                        </div>
+                        <h3 className="font-serif text-xl text-white mt-1">
+                          {nearbyEvent.event_name}
+                        </h3>
+                        <p className="text-xs text-white/50 mt-0.5">
+                          {nearbyEvent.location} •{" "}
+                          {new Date(nearbyEvent.event_day).toLocaleDateString(
+                            "en-US",
+                            { month: "short", day: "numeric" }
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                      <div className="flex items-center gap-1.5 text-xs text-white/60">
+                        <Users className="w-3.5 h-3.5 text-[#FFB6C1]" />
+                        <span>{nearbyEvent.attendee_count} Minglee users attending</span>
+                      </div>
+                      <Link
+                        href={`/events/${nearbyEvent.id}`}
+                        className="text-xs font-medium bg-white/10 hover:bg-white/15 text-white px-4 py-2 rounded-full transition-colors"
+                      >
+                        View Event →
+                      </Link>
+                    </div>
+                  </div>
+                </section>
+              )}
             </div>
           </div>
         </main>

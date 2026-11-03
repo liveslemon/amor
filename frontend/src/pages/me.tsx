@@ -9,7 +9,6 @@ import {
   User,
   Heart,
   ShieldCheck,
-  Bell,
   Camera,
   Briefcase,
   MessageSquare,
@@ -27,6 +26,7 @@ import {
 import { useAuthStore } from "@/store/useAuthStore";
 import { APP_CONFIG } from "@/config/app";
 import API from "@/api/client";
+import { fetchCurrentMatch } from "@/api/matches";
 import {
   savePhotos,
   savePreferences,
@@ -42,7 +42,7 @@ export default function MePage() {
   const logout = useAuthStore((state) => state.logout);
 
   const [activeModal, setActiveModal] = useState<
-    "preferences" | "privacy" | "whatsapp" | "notifications" | "report" | null
+    "preferences" | "privacy" | "whatsapp" | "report" | null
   >(null);
 
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
@@ -58,17 +58,22 @@ export default function MePage() {
   const [relationshipGoal, setRelationshipGoal] = useState("Long-term");
   const [conflictStyle, setConflictStyle] = useState("Talk it out immediately");
 
-  // Report Modal State
+  // Report Modal State. Members have no way to look up another user's ID, so
+  // reporting is only offered for the current Friday match, whose partner ID
+  // we already have from /matches/current.
   const [reportReason, setReportReason] = useState("Harassment");
   const [reportDetails, setReportDetails] = useState("");
-  const [reportTargetId, setReportTargetId] = useState("");
+  const [currentPartner, setCurrentPartner] = useState<{ id: string; name: string } | null>(null);
   const [reportSuccess, setReportSuccess] = useState(false);
   const [reportError, setReportError] = useState("");
   const [profilePhotos, setProfilePhotos] = useState<
-    Array<{ image_url: string; photo_type?: string; upload_order: number }>
+    Array<{ id?: string; image_url: string; photo_type?: string; upload_order: number }>
   >([]);
+  const [brokenPhotoIndexes, setBrokenPhotoIndexes] = useState<Set<number>>(new Set());
   const [photoStatus, setPhotoStatus] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [deletingPhotoIndex, setDeletingPhotoIndex] = useState<number | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -103,13 +108,31 @@ export default function MePage() {
           setConflictStyle(res.data.profile.conflict_style);
         }
         setProfilePhotos((res.data?.photos || []).slice(0, 2));
+        setBrokenPhotoIndexes(new Set());
       } catch (err) {
         console.warn("Could not load user profile:", err);
+      } finally {
+        setProfileLoading(false);
       }
     };
 
     fetchUserPreferences();
   }, [router]);
+
+  useEffect(() => {
+    const fetchPartner = async () => {
+      try {
+        const match = await fetchCurrentMatch<{
+          match_id?: string;
+          partner?: { id: string; name: string };
+        }>(user?.id);
+        setCurrentPartner(match?.partner ? { id: match.partner.id, name: match.partner.name } : null);
+      } catch (err) {
+        console.warn("Could not load current match for reporting:", err);
+      }
+    };
+    fetchPartner();
+  }, [user?.id]);
 
   const handleToggleBuild = (b: string) => {
     setBuilds((prev) =>
@@ -164,16 +187,18 @@ export default function MePage() {
     try {
       const optimized = await optimizeImage(selectedFile);
       const uploaded = await uploadPhotoBinary(optimized);
-      const nextPhotos = [
-        ...profilePhotos,
-        {
-          image_url: uploaded.image_url,
-          photo_type: profilePhotos.length === 0 ? "Profile" : "Gallery",
-          upload_order: profilePhotos.length + 1,
-        },
-      ];
-      await savePhotos(nextPhotos);
-      setProfilePhotos(nextPhotos);
+      // Re-derive photo_type/upload_order for every photo from its position,
+      // since stored rows may carry a stale or null photo_type.
+      const nextPhotos = [...profilePhotos, { image_url: uploaded.image_url }].map(
+        (p, i) => ({
+          image_url: p.image_url,
+          photo_type: i === 0 ? "Profile" : "Gallery",
+          upload_order: i + 1,
+        }),
+      );
+      const saved = await savePhotos(nextPhotos);
+      setProfilePhotos(saved.photos || nextPhotos);
+      setBrokenPhotoIndexes(new Set());
       setPhotoStatus("Photo uploaded and saved.");
     } catch (error) {
       console.error("Could not upload profile photo:", error);
@@ -188,21 +213,61 @@ export default function MePage() {
     }
   };
 
+  const handleDeletePhoto = async (index: number) => {
+    const photo = profilePhotos[index];
+    if (!photo || deletingPhotoIndex !== null) return;
+    if (profilePhotos.length <= 1) {
+      setPhotoStatus("Upload a replacement photo before removing your only photo.");
+      return;
+    }
+    if (!window.confirm("Remove this photo?")) return;
+
+    // The live backend only exposes a "replace all photos" endpoint, so a
+    // single delete is done by re-saving the list without this one.
+    const remaining = profilePhotos
+      .filter((_, i) => i !== index)
+      .map((p, i) => ({
+        image_url: p.image_url,
+        photo_type: i === 0 ? "Profile" : "Gallery",
+        upload_order: i + 1,
+      }));
+
+    setDeletingPhotoIndex(index);
+    setPhotoStatus("");
+    try {
+      const saved = await savePhotos(remaining);
+      setProfilePhotos(saved.photos || remaining);
+      setBrokenPhotoIndexes(new Set());
+      setPhotoStatus("Photo removed.");
+    } catch (error) {
+      console.error("Could not delete profile photo:", error);
+      const message = axios.isAxiosError<{ error?: string }>(error)
+        ? error.response?.data?.error || error.message
+        : error instanceof Error
+          ? error.message
+          : null;
+      setPhotoStatus(message || "Could not remove photo. Please try again.");
+    } finally {
+      setDeletingPhotoIndex(null);
+    }
+  };
+
   const handleReportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentPartner) return;
     setReportError("");
     try {
       await API.post("/reports", {
-        reported_user_id: reportTargetId || undefined,
-        reason: reportReason,
-        details: reportDetails,
+        reported_user_id: currentPartner.id,
+        reason: reportDetails.trim()
+          ? `${reportReason}: ${reportDetails.trim()}`
+          : reportReason,
       });
       setReportSuccess(true);
       setTimeout(() => {
         setReportSuccess(false);
         setActiveModal(null);
         setReportDetails("");
-        setReportTargetId("");
       }, 2000);
     } catch (error) {
       console.error("Could not submit user report:", error);
@@ -216,9 +281,7 @@ export default function MePage() {
   };
 
   const handleTestWhatsApp = () => {
-    const text = encodeURIComponent(
-      "Hi Minglee! This is a test confirmation from my profile settings."
-    );
+    const text = encodeURIComponent("Hi Minglee! I need some help.");
     window.open(
       `https://wa.me/${APP_CONFIG.whatsappNumber.replace("+", "")}?text=${text}`,
       "_blank"
@@ -254,12 +317,6 @@ export default function MePage() {
                 Manage your identity, dating parameters, and account preferences.
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 text-xs text-white/70 border border-white/5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                Active Member
-              </span>
-            </div>
           </div>
 
           {/* Responsive Layout: 2 Columns on Desktop */}
@@ -269,18 +326,28 @@ export default function MePage() {
               {/* User Profile Card */}
               <div className="rounded-2xl bg-[#0c1322] border border-white/5 p-5 space-y-4">
                 <div className="flex items-center gap-4">
-                  <div className="relative flex items-center justify-center w-16 h-16 rounded-full bg-[#141d2e] text-2xl font-serif text-white">
-                    {displayName.charAt(0).toUpperCase()}
-                    <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-400" />
+                  <div className="relative flex items-center justify-center w-16 h-16 rounded-full bg-[#141d2e] text-2xl font-serif text-white overflow-hidden shrink-0">
+                    {profileLoading ? (
+                      <div className="h-full w-full animate-pulse bg-white/[0.06]" />
+                    ) : profilePhotos[0] && !brokenPhotoIndexes.has(0) ? (
+                      <img
+                        src={profilePhotos[0].image_url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        onError={() =>
+                          setBrokenPhotoIndexes((prev) => new Set(prev).add(0))
+                        }
+                      />
+                    ) : (
+                      displayName.charAt(0).toUpperCase()
+                    )}
+                    <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-400 ring-2 ring-[#0c1322]" />
                   </div>
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-1.5">
                       <h2 className="font-serif text-xl text-white">
                         {displayName}
                       </h2>
-                      <span className="text-[10px] uppercase font-sans font-semibold px-2 py-0.5 rounded-full bg-white/10 text-white/80">
-                        Verified
-                      </span>
                     </div>
                     <p className="text-xs text-white/50 font-sans">
                       {displayPhone}
@@ -306,16 +373,42 @@ export default function MePage() {
                   {[0, 1].map((index) => (
                     <div
                       key={index}
-                      className="flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-white/[0.04]"
+                      className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-white/[0.04]"
                     >
-                      {profilePhotos[index] ? (
+                      {profileLoading ? (
+                        <div className="h-full w-full animate-pulse bg-white/[0.06]" />
+                      ) : profilePhotos[index] && !brokenPhotoIndexes.has(index) ? (
                         <img
                           src={profilePhotos[index].image_url}
                           alt={`Profile photo ${index + 1}`}
                           className="h-full w-full object-cover"
+                          onError={() =>
+                            setBrokenPhotoIndexes((prev) => new Set(prev).add(index))
+                          }
                         />
+                      ) : profilePhotos[index] ? (
+                        <div className="flex flex-col items-center gap-1 px-2 text-center">
+                          <AlertCircle className="h-5 w-5 text-white/30" />
+                          <span className="text-[10px] text-white/35">Photo unavailable</span>
+                        </div>
                       ) : (
                         <Camera className="h-6 w-6 text-white/25" />
+                      )}
+                      {index === 0 && profilePhotos[0] && (
+                        <span className="absolute top-1.5 left-1.5 rounded-full bg-black/70 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white/80">
+                          Display
+                        </span>
+                      )}
+                      {profilePhotos[index] && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePhoto(index)}
+                          disabled={deletingPhotoIndex === index}
+                          aria-label={`Remove profile photo ${index + 1}`}
+                          className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white/80 hover:bg-red-500 hover:text-white transition-colors disabled:opacity-40 cursor-pointer"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
                       )}
                     </div>
                   ))}
@@ -348,19 +441,6 @@ export default function MePage() {
                 )}
               </div>
 
-              {/* Private Member Guarantee */}
-              <div className="p-4 rounded-2xl bg-[#0c1322] border border-white/5 space-y-2">
-                <div className="flex items-center gap-2 text-white/80">
-                  <ShieldCheck className="w-4 h-4 text-[#FFB6C1]" />
-                  <span className="text-xs font-medium flex items-center gap-1">
-                    <span className="font-[family-name:var(--font-marker)] text-xs text-white font-normal">Minglee</span>
-                    <span>Campus Verification</span>
-                  </span>
-                </div>
-                <p className="text-[11px] leading-relaxed text-white/50">
-                  Your profile is actively verified within the university network. Every Friday, our algorithm curates your singular romantic introduction.
-                </p>
-              </div>
             </div>
 
             {/* Right Column: Settings Menu List */}
@@ -448,28 +528,6 @@ export default function MePage() {
                         <span className="w-2 h-2 rounded-full bg-emerald-400" />
                       </div>
                       <p className="text-xs text-white/40">{displayPhone}</p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-white/40" />
-                </button>
-
-                {/* Notifications */}
-                <button
-                  type="button"
-                  onClick={() => setActiveModal("notifications")}
-                  className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors text-left cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-9 h-9 rounded-full bg-white/10 text-white/80">
-                      <Bell className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-sm font-medium text-white">
-                        Notifications
-                      </span>
-                      <p className="text-xs text-white/40">
-                        Friday drop timing, alerts
-                      </p>
                     </div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-white/40" />
@@ -771,14 +829,18 @@ export default function MePage() {
 
                 <div className="space-y-1">
                   <label className="text-xs font-semibold uppercase tracking-wider text-white/60">
-                    Member ID
+                    Reporting
                   </label>
-                  <input
-                    value={reportTargetId}
-                    onChange={(event) => setReportTargetId(event.target.value)}
-                    placeholder="ID of the user to report"
-                    className="w-full rounded-xl bg-white/[0.04] p-2.5 text-xs text-white placeholder-white/40"
-                  />
+                  {currentPartner ? (
+                    <div className="w-full rounded-xl bg-white/[0.04] p-2.5 text-xs text-white">
+                      {currentPartner.name} (your current Friday match)
+                    </div>
+                  ) : (
+                    <p className="text-xs text-white/50 leading-relaxed">
+                      You don&apos;t have an active match to report right now. Once you&apos;re
+                      paired, you can report or block them from the date page.
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -789,7 +851,7 @@ export default function MePage() {
                     rows={3}
                     value={reportDetails}
                     onChange={(e) => setReportDetails(e.target.value)}
-                    placeholder="Provide details or the user's name/number..."
+                    placeholder="Describe what happened..."
                     className="w-full rounded-xl bg-white/[0.04] p-2.5 text-xs text-white placeholder-white/40 focus:outline-none"
                   />
                 </div>
@@ -802,7 +864,8 @@ export default function MePage() {
 
                 <button
                   type="submit"
-                  className="w-full rounded-full bg-red-600 hover:bg-red-500 text-white py-2.5 text-xs font-semibold transition-colors cursor-pointer"
+                  disabled={!currentPartner}
+                  className="w-full rounded-full bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white py-2.5 text-xs font-semibold transition-colors cursor-pointer"
                 >
                   Submit Confidential Report
                 </button>
@@ -835,7 +898,8 @@ export default function MePage() {
               <p className="text-base font-serif text-white">{displayPhone}</p>
               <p className="text-[11px] text-white/60 pt-1">
                 Your WhatsApp number is only used for Minglee match handoffs and
-                critical notifications.
+                critical notifications. Need help? Message Minglee support directly
+                on WhatsApp below.
               </p>
             </div>
 
@@ -844,42 +908,12 @@ export default function MePage() {
               onClick={handleTestWhatsApp}
               className="w-full rounded-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 text-xs font-semibold transition-colors cursor-pointer"
             >
-              Send Test Message
+              Message Minglee on WhatsApp
             </button>
           </div>
         </div>
       )}
 
-      {/* MODAL 5: NOTIFICATIONS */}
-      {activeModal === "notifications" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
-          <div className="w-full max-w-md rounded-2xl bg-[#0c1322] p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-white/5 pb-3">
-              <h3 className="font-serif text-lg text-white">Notifications</h3>
-              <button
-                onClick={() => setActiveModal(null)}
-                className="text-white/50 hover:text-white cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="rounded-xl bg-white/[0.04] p-4 text-sm text-white/75">
-              Minglee notifications are required for match drops and important
-              account updates. You can manage browser permission in your device
-              settings.
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setActiveModal(null)}
-              className="w-full rounded-full bg-white/10 hover:bg-white/15 text-white py-2.5 text-xs font-semibold transition-colors mt-2 cursor-pointer"
-            >
-              Done
-            </button>
-          </div>
-        </div>
-      )}
     </>
   );
 }
