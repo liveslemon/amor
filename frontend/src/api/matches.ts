@@ -1,7 +1,6 @@
 import API from "./client";
 
 const MATCH_CACHE_PREFIX = "minglee_current_match:";
-const MATCH_NOTIFICATION_KEY = "minglee_notified_match:";
 // Partner photo URLs are signed and expire after 1 hour; don't serve a cached
 // match past that, or its photos would show broken.
 const MATCH_CACHE_TTL_MS = 55 * 60 * 1000;
@@ -42,28 +41,6 @@ export async function fetchCurrentMatch<T extends { match_id?: string }>(
     if (typeof window !== "undefined") {
       if (match) {
         localStorage.setItem(cacheKey(userId), JSON.stringify({ savedAt: Date.now(), match }));
-        const notifiedMatch = localStorage.getItem(MATCH_NOTIFICATION_KEY);
-        if (
-          match.match_id &&
-          notifiedMatch !== match.match_id &&
-          "Notification" in window &&
-          Notification.permission === "granted"
-        ) {
-          const registration = await navigator.serviceWorker?.getRegistration();
-          if (registration?.showNotification) {
-            await registration.showNotification("Your Minglee date is ready", {
-              body: "Your Friday match has been revealed. Open Minglee to see who you were paired with.",
-              icon: "/icons/icon-192x192.png",
-              tag: `match-${match.match_id}`,
-            });
-          } else {
-            new Notification("Your Minglee date is ready", {
-              body: "Your Friday match has been revealed. Open Minglee to see who you were paired with.",
-              tag: `match-${match.match_id}`,
-            });
-          }
-          localStorage.setItem(MATCH_NOTIFICATION_KEY, match.match_id);
-        }
       } else {
         localStorage.removeItem(cacheKey(userId));
       }
