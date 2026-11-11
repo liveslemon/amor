@@ -8,6 +8,7 @@ import PopupOverlay, { PopupOverlayItem } from "./PopupOverlay";
 
 interface PopupItem extends PopupOverlayItem {
   type: "notification" | "ad";
+  action?: string;
 }
 
 interface PopupNotificationData {
@@ -15,7 +16,7 @@ interface PopupNotificationData {
   title?: string;
   message?: string;
   action_url?: string;
-  metadata?: { image_url?: string };
+  metadata?: { image_url?: string; action?: string };
 }
 
 interface PopupAdData {
@@ -64,6 +65,7 @@ export default function NotificationPopup() {
               image_url: notification.metadata?.image_url,
               label: "Minglee update",
               type: "notification",
+              action: notification.metadata?.action,
             }
           : ad
             ? {
@@ -104,6 +106,12 @@ export default function NotificationPopup() {
   const dismiss = async (clicked: boolean) => {
     if (!popup) return;
     markDismissed(popup.id);
+    // This specific popup exists to get a user who previously dismissed the
+    // enable-notifications modal to see it again, so clicking through must
+    // clear that earlier dismissal rather than respect it.
+    if (clicked && popup.action === "enable_push" && user && typeof window !== "undefined") {
+      localStorage.removeItem(`minglee-push-dismissed:${user.id}`);
+    }
     if (popup.type === "ad") {
       if (clicked) {
         API.post(`/ads/${encodeURIComponent(popup.id)}/click`).catch((error) => {
