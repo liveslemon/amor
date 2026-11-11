@@ -201,6 +201,12 @@ export default function AdminPage() {
   const [actionUrl, setActionUrl] = useState("/date");
   const [sendingPush, setSendingPush] = useState(false);
 
+  // Notification engagement stats
+  const [recentBatches, setRecentBatches] = useState<{ batchId: string; createdAt: string }[]>([]);
+  const [selectedBatchId, setSelectedBatchId] = useState("");
+  const [batchStats, setBatchStats] = useState<{ sent: number; subscribed: number; read: number; clicked: number } | null>(null);
+  const [loadingBatchStats, setLoadingBatchStats] = useState(false);
+
   // Matching trigger state
   const [runningMatch, setRunningMatch] = useState(false);
 
@@ -278,6 +284,12 @@ export default function AdminPage() {
       loadAllData(adminSecret);
     }
   }, [adminSecret]);
+
+  useEffect(() => {
+    if (adminSecret && activeTab === "push") {
+      loadNotificationBatches(adminSecret);
+    }
+  }, [adminSecret, activeTab]);
 
   const handleLogout = () => {
     localStorage.removeItem("minglee-admin-key");
@@ -420,6 +432,11 @@ export default function AdminPage() {
       setTitle("");
       setBody("");
       loadAllData(adminSecret);
+      if (res.data?.batchId) {
+        loadNotificationBatches(adminSecret);
+        setSelectedBatchId(res.data.batchId);
+        loadBatchStats(adminSecret, res.data.batchId);
+      }
     } catch (err: any) {
       setActionMessage({
         type: "error",
@@ -427,6 +444,42 @@ export default function AdminPage() {
       });
     } finally {
       setSendingPush(false);
+    }
+  };
+
+  const loadNotificationBatches = async (secret: string) => {
+    try {
+      const res = await API.get("/admin/notifications/batches", {
+        headers: { "x-admin-secret": secret },
+      });
+      setRecentBatches(res.data?.batches || []);
+    } catch {
+      // Non-critical; leave the list as-is on failure.
+    }
+  };
+
+  const loadBatchStats = async (secret: string, batchId: string) => {
+    if (!batchId) {
+      setBatchStats(null);
+      return;
+    }
+    try {
+      setLoadingBatchStats(true);
+      const res = await API.get("/admin/notifications/stats", {
+        params: { batchId },
+        headers: { "x-admin-secret": secret },
+      });
+      setBatchStats({
+        sent: res.data?.sent ?? 0,
+        subscribed: res.data?.subscribed ?? 0,
+        read: res.data?.read ?? 0,
+        clicked: res.data?.clicked ?? 0,
+      });
+    } catch (err: any) {
+      setActionMessage({ type: "error", text: adminErrorText(err, "Could not load notification stats.") });
+      setBatchStats(null);
+    } finally {
+      setLoadingBatchStats(false);
     }
   };
 
@@ -1196,6 +1249,58 @@ export default function AdminPage() {
                       <span>{sendingPush ? "Dispatching..." : "Broadcast Push Notification"}</span>
                     </button>
                   </form>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-[#0c1322] p-6 space-y-4">
+                  <div>
+                    <h3 className="font-serif text-xl text-white">Engagement</h3>
+                    <p className="text-xs text-white/50 mt-1">
+                      Sent, subscribed, viewed and clicked counts for a broadcast or a weekly matching cycle.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <select
+                      value={selectedBatchId}
+                      onChange={(e) => {
+                        setSelectedBatchId(e.target.value);
+                        loadBatchStats(adminSecret, e.target.value);
+                      }}
+                      className="w-full rounded-xl border border-white/10 bg-[#0a0f1a] px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FFB6C1]"
+                    >
+                      <option value="">Select a send...</option>
+                      {recentBatches.map((b) => (
+                        <option key={b.batchId} value={b.batchId}>
+                          {b.batchId}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {loadingBatchStats ? (
+                    <p className="text-xs text-white/50">Loading stats...</p>
+                  ) : batchStats ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="rounded-xl border border-white/10 bg-[#0a0f1a] p-3 text-center">
+                        <div className="text-lg font-semibold text-white">{batchStats.sent}</div>
+                        <div className="text-[11px] text-white/50">Sent</div>
+                      </div>
+                      <div className="rounded-xl border border-white/10 bg-[#0a0f1a] p-3 text-center">
+                        <div className="text-lg font-semibold text-white">{batchStats.subscribed}</div>
+                        <div className="text-[11px] text-white/50">Subscribed</div>
+                      </div>
+                      <div className="rounded-xl border border-white/10 bg-[#0a0f1a] p-3 text-center">
+                        <div className="text-lg font-semibold text-white">{batchStats.read}</div>
+                        <div className="text-[11px] text-white/50">Viewed</div>
+                      </div>
+                      <div className="rounded-xl border border-white/10 bg-[#0a0f1a] p-3 text-center">
+                        <div className="text-lg font-semibold text-white">{batchStats.clicked}</div>
+                        <div className="text-[11px] text-white/50">Clicked</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-white/50">Pick a send above to see its stats.</p>
+                  )}
                 </div>
               </div>
 
